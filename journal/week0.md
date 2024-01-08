@@ -73,9 +73,9 @@ aws budgets create-budget \
 ### Create Billing Alarm
 
 1. First create an SNS Topic
-    ```
-    aws sns create-topic --name billing-alarm
-    ```
+  ```
+  aws sns create-topic --name billing-alarm
+  ```
 
 - This will return a TopicARN
 
@@ -100,8 +100,8 @@ aws sns subscribe \
 
 3. Run
 
-    ```
-    aws cloudwatch put-metric-alarm --cli-input-json file://aws/json/alarm-config.json
-    ```
+  ```
+  aws cloudwatch put-metric-alarm --cli-input-json file://aws/json/alarm-config.json
+  ```
 
 4. Go to Cloudwatch to confirm
