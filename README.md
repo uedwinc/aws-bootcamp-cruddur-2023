@@ -1,9 +1,20 @@
-# FREE AWS Cloud Project Bootcamp
+# AWS Cloud Project
 
 - Application: Cruddur
-- Cohort: 2023-A1
 
-This is the starting codebase that will be used in the FREE AWS Cloud Project Bootcamp 2023
+Building Cruddur, a micro-bloging platform with ephemeral/expiring posts. Meant for anyone who doesn't want to maintain a permanent presence online.
+
+- It will be a microservice architecture
+- Frontend will be javascript using react
+- Backend will be python using flask
+
+Projects will include:
+- SQL and NoSQL databases
+- Realtime modern APIs
+- Multiple container services (microservices)
+- CI/CD pipeline
+- Decentralized authentication
+- And more...
 
 ![Cruddur Graphic](_docs/assets/cruddur-banner.jpg)
 
@@ -11,14 +22,10 @@ This is the starting codebase that will be used in the FREE AWS Cloud Project Bo
 
 ## Instructions
 
-At the start of the bootcamp you need to create a new Github Repository from this template.
-
-## Journaling Homework
-
 The `/journal` directory contains
 
-- [ ] [Week 0](journal/week0.md)
-- [ ] [Week 1](journal/week1.md)
+- [ ] [Setting Up and Architecture](journal/week0.md)
+- [ ] [App Containerization](journal/week1.md)
 - [ ] [Week 2](journal/week2.md)
 - [ ] [Week 3](journal/week3.md)
 - [ ] [Week 4](journal/week4.md)
