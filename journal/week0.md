@@ -2,7 +2,7 @@
 
 ## Architecture Design using Lucidchart
 
-![Cruddur Architecture](_docs/assets/cruddur-architecture.png)
+![Cruddur Architecture](/_docs/assets/cruddur-architecture.png)
 
 ## Setting up Gitpod and Billing
 
@@ -56,7 +56,7 @@ tasks:
 
 1. Follow examples here: https://docs.aws.amazon.com/cli/latest/reference/budgets/create-budget.html#examples
 
-2. Create [budget.json](aws/json/budget.json) and [budget-notifications-with-subscribers.json](aws/json/budget-notifications-with-subscribers.json)
+2. Create [budget.json](/aws/json/budget.json) and [budget-notifications-with-subscribers.json](/aws/json/budget-notifications-with-subscribers.json)
 
 3. Set AWS_ACCOUNT_ID env variable
 
@@ -96,7 +96,7 @@ aws sns subscribe \
 
 1. Follow doc here: https://repost.aws/knowledge-center/cloudwatch-estimatedcharges-alarm
 
-2. Create an [alarm-config.json](aws/json/alarm-config.json) file
+2. Create an [alarm-config.json](/aws/json/alarm-config.json) file
 
 3. Run
 
