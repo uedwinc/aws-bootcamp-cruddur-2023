@@ -26,7 +26,7 @@ The `/journal` directory contains
 
 - [ ] [Setting Up and Architecture](journal/week0.md)
 - [ ] [App Containerization](journal/week1.md)
-- [ ] [Week 2](journal/week2.md)
+- [ ] [Distributed Tracing](journal/week2.md)
 - [ ] [Week 3](journal/week3.md)
 - [ ] [Week 4](journal/week4.md)
 - [ ] [Week 5](journal/week5.md)
