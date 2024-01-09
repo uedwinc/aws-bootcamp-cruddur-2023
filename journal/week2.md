@@ -74,3 +74,8 @@ RequestsInstrumentor().instrument()
 ```
 
 - Find the instructions for instrumentation here: https://docs.honeycomb.io/getting-data-in/opentelemetry/python-distro/ (This is a newer method slighly different from the one we used)
+
+- Do `docker compose up` 
+- Access the address and ports and check for tracing on honeycomb
+
+- Follow instructions here to create spans for honeycomb: https://docs.honeycomb.io/getting-data-in/opentelemetry/python-distro/#creating-spans
