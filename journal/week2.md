@@ -79,3 +79,6 @@ RequestsInstrumentor().instrument()
 - Access the address and ports and check for tracing on honeycomb
 
 - Follow instructions here to create spans for honeycomb: https://docs.honeycomb.io/getting-data-in/opentelemetry/python-distro/#creating-spans
+
+- You can also add attributes to the span following documentation here: https://docs.honeycomb.io/getting-data-in/opentelemetry/python-distro/#adding-attributes-to-spans
+
