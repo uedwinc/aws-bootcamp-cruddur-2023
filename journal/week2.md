@@ -194,3 +194,5 @@ aws xray create-sampling-rule --cli-input-json file://aws/json/xray.json
 ```
 
 - Now, do `docker compose up`
+
+- Run the backend address and confirm logs on x-ray daemon and on AWS console
