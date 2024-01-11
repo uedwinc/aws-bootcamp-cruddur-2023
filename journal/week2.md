@@ -196,3 +196,66 @@ aws xray create-sampling-rule --cli-input-json file://aws/json/xray.json
 - Now, do `docker compose up`
 
 - Run the backend address and confirm logs on x-ray daemon and on AWS console
+
+
+## CloudWatch Logs
+
+- Instructions: https://pypi.org/project/watchtower/
+
+- Add to the backend `requirements.txt`
+
+```
+watchtower
+```
+
+- Install the packages
+
+```
+pip install -r requirements.txt
+```
+
+- Add the following to the `app.py`
+
+```py
+import watchtower
+import logging
+from time import strftime
+```
+
+```py
+# Configuring Logger to Use CloudWatch
+LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.DEBUG)
+console_handler = logging.StreamHandler()
+cw_handler = watchtower.CloudWatchLogHandler(log_group='cruddur')
+LOGGER.addHandler(console_handler)
+LOGGER.addHandler(cw_handler)
+LOGGER.info("some message")
+```
+
+```py
+@app.after_request
+def after_request(response):
+    timestamp = strftime('[%Y-%b-%d %H:%M]')
+    LOGGER.error('%s %s %s %s %s %s', timestamp, request.remote_addr, request.method, request.scheme, request.full_path, response.status)
+    return response
+```
+
+- We'll log something in an API endpoint
+
+  - Go to `home_activities.py` and add:
+    - `import logging`
+    - Next, add a logger.info with a message to the def run function
+  - Go to `app.py` and add logger information to the @app.route for `/api/activities/home`
+
+- Set the env var in your backend-flask for `docker-compose.yml`
+
+```yml
+      AWS_DEFAULT_REGION: "${AWS_DEFAULT_REGION}"
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+```
+
+> passing AWS_REGION doesn't seems to get picked up by boto3 so pass default region instead
+
+- Now, do `docker compose up`
