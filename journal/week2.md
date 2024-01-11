@@ -259,3 +259,7 @@ def after_request(response):
 > passing AWS_REGION doesn't seems to get picked up by boto3 so pass default region instead
 
 - Now, do `docker compose up`
+
+- Launch the backend address
+
+- Go to CloudWatch on AWS to confirm logs
