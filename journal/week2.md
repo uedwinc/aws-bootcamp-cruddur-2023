@@ -324,7 +324,8 @@ def init_rollbar():
     got_request_exception.connect(rollbar.contrib.flask.report_exception, app)
 ```
 
-**Use this code instead**
+**Use this code instead** from https://github.com/omenking/aws-bootcamp-cruddur-2023/blob/week-x/backend-flask/lib/rollbar.py
+
 ```py
 ## hack to make request data work with pyrollbar <= 0.16.3
 def _get_flask_request():
@@ -356,6 +357,32 @@ def init_rollbar(app):
   return rollbar
 ```
 
+**Use ChatGPT Fix**
+```py
+rollbar_access_token = os.getenv('ROLLBAR_ACCESS_TOKEN')
+def init_rollbar():
+    """init rollbar module"""
+    rollbar.init(
+        # access token
+        rollbar_access_token,
+        # environment name
+        'production',
+        # server root directory, makes tracebacks prettier
+        root=os.path.dirname(os.path.realpath(__file__)),
+        # flask already sets up logging
+        allow_logging_basic_config=False)
+
+    # send exceptions from `app` to rollbar, using flask's signal system.
+    got_request_exception.connect(rollbar.contrib.flask.report_exception, app)
+
+# Use the before_request decorator to initialize Rollbar before the first request
+@app.before_request
+def before_request():
+    if not hasattr(app, 'rollbar_initialized'):
+        app.rollbar_initialized = True
+        init_rollbar()
+```
+
 - We'll add an endpoint just for testing rollbar to `app.py`
 
 ```py
@@ -365,4 +392,6 @@ def rollbar_test():
     return "Hello World!"
 ```
 
-- Now, do `docker compose up`
+- Now, do `docker compose up` and check Rollbar for 
+
+- We can simulate an error in `activities_home`
