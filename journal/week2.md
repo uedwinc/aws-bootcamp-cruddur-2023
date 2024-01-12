@@ -263,3 +263,68 @@ def after_request(response):
 - Launch the backend address
 
 - Go to CloudWatch on AWS to confirm logs
+
+
+## Rollbar
+
+Rollbar provides real-time error tracking
+
+https://rollbar.com/
+
+- Add to `requirements.txt`
+
+```
+blinker
+rollbar
+```
+
+- Install dependencies
+
+```sh
+pip install -r requirements.txt
+```
+
+- We need to set our access token (This is gotten from Rollbar)
+
+```sh
+export ROLLBAR_ACCESS_TOKEN=""
+gp env ROLLBAR_ACCESS_TOKEN=""
+```
+
+- Instrument `app.py` for Rollbar
+
+```py
+import rollbar
+import rollbar.contrib.flask
+from flask import got_request_exception
+```
+
+```py
+rollbar_access_token = os.getenv('ROLLBAR_ACCESS_TOKEN')
+@app.before_first_request
+def init_rollbar():
+    """init rollbar module"""
+    rollbar.init(
+        # access token
+        rollbar_access_token,
+        # environment name
+        'production',
+        # server root directory, makes tracebacks prettier
+        root=os.path.dirname(os.path.realpath(__file__)),
+        # flask already sets up logging
+        allow_logging_basic_config=False)
+
+    # send exceptions from `app` to rollbar, using flask's signal system.
+    got_request_exception.connect(rollbar.contrib.flask.report_exception, app)
+```
+
+- We'll add an endpoint just for testing rollbar to `app.py`
+
+```py
+@app.route('/rollbar/test')
+def rollbar_test():
+    rollbar.report_message('Hello World!', 'warning')
+    return "Hello World!"
+```
+
+- Now, do `docker compose up`
