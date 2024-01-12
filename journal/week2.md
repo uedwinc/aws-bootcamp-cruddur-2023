@@ -271,6 +271,8 @@ Rollbar provides real-time error tracking
 
 https://rollbar.com/
 
+- Create a new project in Rollbar called `Cruddur`
+
 - Add to `requirements.txt`
 
 ```
@@ -392,6 +394,8 @@ def rollbar_test():
     return "Hello World!"
 ```
 
-- Now, do `docker compose up` and check Rollbar for 
+- [Rollbar Flask Example](https://github.com/rollbar/rollbar-flask-example/blob/master/hello.py)
+
+- Now, do `docker compose up` and check Rollbar console
 
 - We can simulate an error in `activities_home`
