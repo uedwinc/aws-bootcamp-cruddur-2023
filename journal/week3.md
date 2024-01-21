@@ -1,1 +1,1 @@
-# Week 3 — Decentralized Authentication
+# Decentralized Authentication
