@@ -12,7 +12,7 @@ export default function ProfileInfo(props) {
     setPopped(!popped)
   }
 
-  const signOut = async () => {
+  const profilesignOut = async () => {
     try {
         await signOut({ global: true });
         window.location.href = "/"
