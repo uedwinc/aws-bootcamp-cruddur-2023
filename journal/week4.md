@@ -72,7 +72,7 @@ UPDATE table_name SET column1 = value1, column2 = value2, ... WHERE condition; -
 DELETE FROM table_name WHERE condition; -- Delete data from a table
 ```
 
-## Create (and dropping) our database
+### Create (and dropping) our database
 
 We can use the createdb command to create our database:
 
@@ -98,7 +98,7 @@ We can create the database within the PSQL client
 CREATE database cruddur;
 ```
 
-## Import Script
+### Import Script
 
 We'll create a new SQL file called `schema.sql`
 and we'll place it in `backend-flask/db`
@@ -122,14 +122,47 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp"; --Use this
 psql cruddur < db/schema.sql -h localhost -U postgres
 ```
 
-## Create a CONNECTION URI string
+### Create a CONNECTION URI string
 
 CONNECTION URI string is a way of providing all the details that is needed to authenticate to the server. 
 
 Documentation: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
 
-More documentation showing general format (postgresql://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]) here: https://stackoverflow.com/questions/3582552/what-is-the-format-for-the-postgresql-connection-string-url
+More documentation here https://stackoverflow.com/questions/3582552/what-is-the-format-for-the-postgresql-connection-string-url shows general format: postgresql://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]
 
 ```
 CONNECTION_URL="postgresql://postgres:password@localhost:5432/cruddur"
+```
+
+We can test this using:
+```
+psql postgresql://postgres:password@localhost:5432/cruddur
+```
+
+Now, we can set this as env variable:
+
+```
+export CONNECTION_URL="postgresql://postgres:password@localhost:5432/cruddur"
+
+gp env CONNECTION_URL="postgresql://postgres:password@localhost:5432/cruddur"
+```
+
+- Now, we can authenticate into the server using:
+
+```
+psql $CONNECTION_URL
+```
+
+- We can set this for production using the details used for RDS on AWS
+
+```
+PROD_CONNECTION_URL="postgresql://cruddurroot:cruddurPassword1@cruddur-db-instance.cbkq6ia0u32o.us-east-2.rds.amazonaws.com:5432/cruddur"
+```
+
+- Set this as env variable:
+
+```
+export PROD_CONNECTION_URL="postgresql://cruddurroot:cruddurPassword1@cruddur-db-instance.cbkq6ia0u32o.us-east-2.rds.amazonaws.com:5432/cruddur"
+
+gp env PROD_CONNECTION_URL="postgresql://cruddurroot:cruddurPassword1@cruddur-db-instance.cbkq6ia0u32o.us-east-2.rds.amazonaws.com:5432/cruddur"
 ```
