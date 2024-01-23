@@ -27,6 +27,7 @@ aws rds create-db-instance \
 ```
 
 - You can add this to turn off enhanced monitoring to minimize cost:
+
 ```
     --monitoring-interval 0 \
 ```
@@ -51,7 +52,7 @@ Connect to psql via the psql client cli tool (remember to use the host flag to s
 psql -U postgres --host localhost
 ```
 
-Common PSQL commands:
+**Common PSQL commands:**
 
 ```sql
 \x on -- expanded display when looking at data
@@ -72,7 +73,7 @@ UPDATE table_name SET column1 = value1, column2 = value2, ... WHERE condition; -
 DELETE FROM table_name WHERE condition; -- Delete data from a table
 ```
 
-### Create (and dropping) our database
+### Creating (and dropping) our database
 
 We can use the createdb command to create our database:
 
@@ -113,7 +114,7 @@ CREATE EXTENSION "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp"; --Use this
 ```
 
-- We need to add the create extension to schema.sql
+- We need to add `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";` to schema.sql
 
 - `cd backend-flask`
 
@@ -165,4 +166,24 @@ PROD_CONNECTION_URL="postgresql://cruddurroot:cruddurPassword1@cruddur-db-instan
 export PROD_CONNECTION_URL="postgresql://cruddurroot:cruddurPassword1@cruddur-db-instance.cbkq6ia0u32o.us-east-2.rds.amazonaws.com:5432/cruddur"
 
 gp env PROD_CONNECTION_URL="postgresql://cruddurroot:cruddurPassword1@cruddur-db-instance.cbkq6ia0u32o.us-east-2.rds.amazonaws.com:5432/cruddur"
+```
+
+Next, we need to write bash scripts to automate some basic sql tasks
+
+- In `backend-flask`, create a folder `bin` and add three files with no extension `db-create`, `db-drop` and `db-schema-load`
+
+- Give execute rights to user on the three files:
+
+```
+chmod u+x bin/db-create
+
+chmod u+x bin/db-drop
+
+
+```
+
+- In `db-drop`:
+
+```bash
+
 ```
