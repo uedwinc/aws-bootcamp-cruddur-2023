@@ -172,18 +172,52 @@ Next, we need to write bash scripts to automate some basic sql tasks
 
 - In `backend-flask`, create a folder `bin` and add three files with no extension `db-create`, `db-drop` and `db-schema-load`
 
-- Give execute rights to user on the three files:
+- Give execute rights to user for the three files:
 
 ```
 chmod u+x bin/db-create
 
 chmod u+x bin/db-drop
 
-
+chmod u+x bin/db-schema-load
 ```
 
 - In `db-drop`:
 
 ```bash
+#! /usr/bin/bash
 
+echo "db-drop"
+
+NO_DB_CONNECTION_URL=$(sed 's/\/cruddur//g' <<<"$CONNECTION_URL")
+psql $NO_DB_CONNECTION_URL -c "DROP DATABASE IF EXISTS cruddur;"
+```
+
+- We use SED to create a NO_DB_CONNECTION_URL. This is because CONNECTION_URL authenticates us into the `cruddur` database and we cannot drop a database that we are in.
+
+- In `db-create`:
+
+```bash
+#! /usr/bin/bash
+
+echo "db-create"
+
+NO_DB_CONNECTION_URL=$(sed 's/\/cruddur//g' <<<"$CONNECTION_URL")
+psql $NO_DB_CONNECTION_URL -c "CREATE DATABASE IF NOT EXISTS cruddur;"
+```
+
+- In `db-schema-load`:
+
+First, we will use the function `realpath` to determine the path of `schema.sql`. Then we will pass this as a variable.
+
+```bash
+#! /usr/bin/bash
+
+echo "db-schema-load"
+
+schema_path="$(realpath .)/db/schema.sql"
+
+echo $schema_path
+
+psql $CONNECTION_URL cruddur < $schema_path
 ```
