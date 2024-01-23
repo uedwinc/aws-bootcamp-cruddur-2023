@@ -174,7 +174,7 @@ Next, we need to write bash scripts to automate some basic sql tasks
 
 - Give execute rights to user for the three files:
 
-```
+```bash
 chmod u+x bin/db-connect
 
 chmod u+x bin/db-create
@@ -257,7 +257,7 @@ printf "${CYAN}== ${LABEL}${NO_COLOR}\n"
 
 - Confirm by running the schema
 
-```
+```bash
 ./bin/db-schema-load
 ```
 
@@ -283,6 +283,7 @@ CREATE TABLE public.users (
 ```sql
 CREATE TABLE public.activities (
   uuid UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_uuid UUID NOT NULL,
   message text NOT NULL,
   replies_count integer DEFAULT 0,
   reposts_count integer DEFAULT 0,
@@ -291,4 +292,61 @@ CREATE TABLE public.activities (
   expires_at TIMESTAMP,
   created_at TIMESTAMP default current_timestamp NOT NULL
 );
+```
+
+- To create the tables, run `db-schema-load`
+
+```bash
+./bin/db-schema-load
+```
+
+Next, we want to manually add seed values to the tables/database.
+
+- Create a `db-seed` and `seed.sql` files
+
+- Give execute rights to user for `db-seed`
+
+```bash
+chmod u+x bin/db-seed
+```
+
+- In `db-seed`, enter:
+
+```bash
+#! /usr/bin/bash
+
+CYAN='\033[1;36m'
+NO_COLOR='\033[0m'
+LABEL="db-seed"
+printf "${CYAN}== ${LABEL}${NO_COLOR}\n"
+
+seed_path="$(realpath .)/db/seed.sql"
+
+echo $seed_path
+
+if [ "$1" = "prod" ]; then
+  echo "Running in production mode"
+  URL=$PROD_CONNECTION_URL
+else
+  URL=$CONNECTION_URL
+fi
+
+psql $URL cruddur < $seed_path
+```
+
+- In `seed.sql`, enter:
+
+```sql
+INSERT INTO public.users (display_name, handle, cognito_user_id)
+VALUES
+  ('Andrew Brown', 'andrewbrown' ,'MOCK'),
+  ('Andrew Bayko', 'bayko' ,'MOCK');
+
+INSERT INTO public.activities (user_uuid, message, expires_at)
+VALUES
+  (
+    (SELECT uuid from public.users WHERE users.handle = 'andrewbrown' LIMIT 1),
+    'This was imported as seed data!',
+    current_timestamp + interval '10 day'
+  )
 ```
