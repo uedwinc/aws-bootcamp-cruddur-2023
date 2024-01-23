@@ -170,16 +170,26 @@ gp env PROD_CONNECTION_URL="postgresql://cruddurroot:cruddurPassword1@cruddur-db
 
 Next, we need to write bash scripts to automate some basic sql tasks
 
-- In `backend-flask`, create a folder `bin` and add three files with no extension `db-create`, `db-drop` and `db-schema-load`
+- In `backend-flask`, create a folder `bin` and add some files with no extension `db-connect`, `db-create`, `db-drop` and `db-schema-load`
 
 - Give execute rights to user for the three files:
 
 ```
+chmod u+x bin/db-connect
+
 chmod u+x bin/db-create
 
 chmod u+x bin/db-drop
 
 chmod u+x bin/db-schema-load
+```
+
+- In `db-connect`:
+
+```bash
+#! /usr/bin/bash
+
+psql $CONNECTION_URL
 ```
 
 - In `db-drop`:
@@ -258,7 +268,7 @@ https://www.postgresql.org/docs/current/sql-createtable.html
 We'll add these in the `schema.sql`
 
 ```sql
-DROP TABLE IF EXISTS public.users cascade;
+DROP TABLE IF EXISTS public.users;
 DROP TABLE IF EXISTS public.activities;
 
 CREATE TABLE public.users (
