@@ -28,7 +28,7 @@ The `/journal` directory contains
 - [ ] [App Containerization](journal/week1.md)
 - [ ] [Distributed Tracing](journal/week2.md)
 - [ ] [Decentralized Authentication](journal/week3.md)
-- [ ] [Week 4](journal/week4.md)
+- [ ] [RDS and Postgres](journal/week4.md)
 - [ ] [Week 5](journal/week5.md)
 - [ ] [Week 6](journal/week6.md)
 - [ ] [Week 7](journal/week7.md)
