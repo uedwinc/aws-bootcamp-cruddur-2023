@@ -56,6 +56,7 @@ psql -U postgres --host localhost
 
 ```sql
 \x on -- expanded display when looking at data
+\x auto -- expanded display is used automatically
 \q -- Quit PSQL
 \l -- List all databases
 \c database_name -- Connect to a specific database
@@ -349,4 +350,82 @@ VALUES
     'This was imported as seed data!',
     current_timestamp + interval '10 day'
   )
+```
+
+See what connections we are using
+
+- Create a `db-sessions` file in the `bin` directory
+
+- Make the file executable
+
+```sh
+chmod u+x bin/db-sessions
+```
+
+```sh
+#! /usr/bin/bash
+
+CYAN='\033[1;36m'
+NO_COLOR='\033[0m'
+LABEL="db-sessions"
+printf "${CYAN}== ${LABEL}${NO_COLOR}\n"
+
+if [ "$1" = "prod" ]; then
+  echo "Running in production mode"
+  URL=$PROD_CONNECTION_URL
+else
+  URL=$CONNECTION_URL
+fi
+
+NO_DB_URL=$(sed 's/\/cruddur//g' <<<"$URL")
+psql $NO_DB_URL -c "select pid as process_id, \
+       usename as user,  \
+       datname as db, \
+       client_addr, \
+       application_name as app,\
+       state \
+from pg_stat_activity;"
+```
+
+> We could have idle connections left open by our Database Explorer extension, try disconnecting and checking again the sessions
+
+- Run the script
+
+```sh
+./bin/db-sessions
+```
+
+Easily setup (reset) everything for our database
+
+- Create a `db-setup` file
+
+- Make it executable
+
+```sh
+chmod u+x bin/db-setup
+```
+
+```sh
+#! /usr/bin/bash
+-e # stop if it fails at any point
+
+CYAN='\033[1;36m'
+NO_COLOR='\033[0m'
+LABEL="db-setup"
+printf "${CYAN}==== ${LABEL}${NO_COLOR}\n"
+
+bin_path="$(realpath .)/bin"
+
+source "$bin_path/db-drop"
+source "$bin_path/db-create"
+source "$bin_path/db-schema-load"
+source "$bin_path/db-seed"
+```
+
+- This is only useful in development, and not production
+
+- Run the script
+
+```sh
+./bin/db-setup
 ```
