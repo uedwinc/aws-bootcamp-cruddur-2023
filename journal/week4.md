@@ -429,3 +429,20 @@ source "$bin_path/db-seed"
 ```sh
 ./bin/db-setup
 ```
+
+**Setup Driver for Postgres**
+
+https://www.psycopg.org/psycopg3/
+
+https://www.psycopg.org/psycopg3/docs/basic/install.html
+
+We'll add the following to our `requirments.txt`
+
+```
+psycopg[binary]
+psycopg[pool]
+```
+
+```
+pip install -r requirements.txt
+```
