@@ -443,6 +443,20 @@ psycopg[binary]
 psycopg[pool]
 ```
 
-```
+```sh
 pip install -r requirements.txt
 ```
+
+**DB Object and Connection Pool**
+
+- Create a new file `lib/db.py`
+
+- We need to add CONNECTION_URL as env var in docker-compose for our backend-flask application:
+
+```yml
+  backend-flask:
+    environment:
+      CONNECTION_URL: "${CONNECTION_URL}"
+```
+
+In our home activities we'll replace our mock endpoint with real api call:
