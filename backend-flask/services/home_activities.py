@@ -28,4 +28,3 @@ class HomeActivities:
           json = cur.fetchone()
       print("==================")
       return json[0]
-      return results
