@@ -280,9 +280,63 @@ import { Auth } from 'aws-amplify';
 
 - You can try to manually create a user on the AWS cognito console (you should get an email from cognito to verify that user) and sign in with the user details
 
-## Confirmation Page
+- If it requires force-change-password, you can run this command on the cli to bypass
+```sh
+aws cognito-idp admin-set-user-password --username andrewbrown --password Testing1234! --user-pool-id us-east-2_xMATXNbsI --permanent
+```
+- Try to inspect the crudder homepage after signin to see ![inspect1]() ![inspect2]()
+
+- Go to cognito console and manually enter required attributes (name and prefered username). Then refresh cruddur to confirm.
+
+- After confirmation, delete the manually created user from cognito and sign out from cruddur
+
+
+## Modify Signup Page
 
 ```js
+import { Auth } from 'aws-amplify';
+
+const [cognitoErrors, setCognitoErrors] = React.useState('');
+
+const onsubmit = async (event) => {
+  event.preventDefault();
+  setCognitoErrors('')
+  try {
+      const { user } = await Auth.signUp({
+        username: email,
+        password: password,
+        attributes: {
+            name: name,
+            email: email,
+            preferred_username: username,
+        },
+        autoSignIn: { // optional - enables auto sign in after user is confirmed
+            enabled: true,
+        }
+      });
+      console.log(user);
+      window.location.href = `/confirm?email=${email}`
+  } catch (error) {
+      console.log(error);
+      setCognitoErrors(error.message)
+  }
+  return false
+}
+
+let errors;
+if (cognitoErrors){
+  errors = <div className='errors'>{cognitoErrors}</div>;
+}
+
+//before submit component
+{errors}
+```
+
+## Modify Confirmation Page
+
+```js
+import { Auth } from 'aws-amplify';
+
 const resend_code = async (event) => {
   setCognitoErrors('')
   try {
@@ -314,8 +368,14 @@ const onsubmit = async (event) => {
   return false
 }
 ```
+- Try signing up on cruddur frontend
+- This should give you a confirm email page. Also go to cognito userpool under users to see that it is waiting for confirmation.
+- Check you email for verification code and confirm. On the cognito console, you will also see that it is confirmed.
+- Now, it requires signin after verification so sign-in on cruddur
 
-## Recovery Page
++ Also, test resend verification code option
+
+## Setup Recovery Page
 
 ```js
 import { Auth } from 'aws-amplify';
@@ -341,6 +401,11 @@ const onsubmit_confirm_code = async (event) => {
   }
   return false
 }
+
+- Try to use the forget password option at signin
+- Check email for password reset code
+- Enter reset code and new password. Then proceed to signin.
+
 
 ## Authenticating Server Side
 
