@@ -407,9 +407,10 @@ const onsubmit_confirm_code = async (event) => {
 - Enter reset code and new password. Then proceed to signin.
 
 
+## Backend Implementation for Cognito
 ## Authenticating Server Side
 
-Add in the `HomeFeedPage.js` a header eto pass along the access token
+Add in the `HomeFeedPage.js` a header to pass along the access token
 
 ```js
   headers: {
@@ -428,3 +429,44 @@ cors = CORS(
   methods="OPTIONS,GET,HEAD,POST"
 )
 ```
+
+- You can confirm from the backend logs that the access token is being passed along by viewing it with debug. 
+- Edit the @app.route("/api/activities/home", methods=['GET']) section like this:
+
+```py
+@app.route("/api/activities/home", methods=['GET'])
+def data_home():
+  app.logger.debug("AUTH HEADER")
+  app.logger.debug(
+    request.headers.get('Authorization')
+  )
+  data = HomeActivities.run(logger=LOGGER)
+  return data, 200
+```
+
+- Make sure to remove the debug after confirming
+
++ Now, we need to instrument for server side verification of the json web token (jwt) generated
+
+- Add `Flask-AWSCognito` to requirements.txt
+
+- `cd` into backend-flask and do `pip install -r requirements.txt`
+
+- From the instructions (https://github.com/cgauge/Flask-AWSCognito), we need to set the following env variables in backend-flask of docker-compose
+
+```yml
+AWS_COGNITO_USER_POOL_ID: "us-east-2_xMATXNbsI"
+AWS_COGNITO_USER_POOL_CLIENT_ID: "6lii3ennqt31pr8a1clgihnmbc"
+```
+
+- In backeend-flask, creat a folder named _lib_
+
+- Next, create a file `cognito_jwt_token.py`. Paste code from https://github.com/cgauge/Flask-AWSCognito/blob/master/flask_awscognito/services/token_service.py and edit appropriately
+
+- In _app.py_, instrument the cognito_jwt_token.py module
+
+- Also edit _home_activities.py_ and _ProfileInfo.js_
+
+- Sign into cruddur and view docker-compose backend logs to confirm authentication
+
+- On cruddur, a certain section was added as mockup for only authenticated users and shouldn't be seen when signed out.
