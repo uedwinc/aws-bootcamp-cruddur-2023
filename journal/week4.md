@@ -120,7 +120,8 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp"; --Use this
 - `cd backend-flask`
 
 - Import the script:
-```
+
+```sh
 psql cruddur < db/schema.sql -h localhost -U postgres
 ```
 
@@ -132,18 +133,19 @@ Documentation: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-
 
 More documentation here https://stackoverflow.com/questions/3582552/what-is-the-format-for-the-postgresql-connection-string-url shows general format: postgresql://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]
 
-```
+```sh
 CONNECTION_URL="postgresql://postgres:password@localhost:5432/cruddur"
 ```
 
 We can test this using:
-```
+
+```sh
 psql postgresql://postgres:password@localhost:5432/cruddur
 ```
 
 Now, we can set this as env variable:
 
-```
+```sh
 export CONNECTION_URL="postgresql://postgres:password@localhost:5432/cruddur"
 
 gp env CONNECTION_URL="postgresql://postgres:password@localhost:5432/cruddur"
@@ -151,19 +153,19 @@ gp env CONNECTION_URL="postgresql://postgres:password@localhost:5432/cruddur"
 
 - Now, we can authenticate into the server using:
 
-```
+```sh
 psql $CONNECTION_URL
 ```
 
 - We can set this for production using the details used for RDS on AWS
 
-```
+```sh
 PROD_CONNECTION_URL="postgresql://cruddurroot:cruddurPassword1@cruddur-db-instance.cbkq6ia0u32o.us-east-2.rds.amazonaws.com:5432/cruddur"
 ```
 
 - Set this as env variable:
 
-```
+```sh
 export PROD_CONNECTION_URL="postgresql://cruddurroot:cruddurPassword1@cruddur-db-instance.cbkq6ia0u32o.us-east-2.rds.amazonaws.com:5432/cruddur"
 
 gp env PROD_CONNECTION_URL="postgresql://cruddurroot:cruddurPassword1@cruddur-db-instance.cbkq6ia0u32o.us-east-2.rds.amazonaws.com:5432/cruddur"
@@ -173,7 +175,7 @@ Next, we need to write bash scripts to automate some basic sql tasks
 
 - In `backend-flask`, create a folder `bin` and add some files with no extension `db-connect`, `db-create`, `db-drop` and `db-schema-load`
 
-- Give execute rights to user for the three files:
+- Give execute rights to user for the four files:
 
 ```bash
 chmod u+x bin/db-connect
@@ -352,6 +354,31 @@ VALUES
   )
 ```
 
+- To add the seed data, run `db-seed`
+
+```sh
+./bin/db-seed
+```
+
+- Let's try to see the seed data in the database:
+
+> Connect to the database
+```sh
+./bin/db-connect
+```
+
+> `\dt` to see tables
+
+> `SELECT * FROM activities;`
+Quit with `q`
+
+> Do `\x on` to activate expanded display or `\x auto` to activate automatic use of expanded display
+
+> Now, you can do: `SELECT * FROM activities;`
+
+> Confirm that uuid and timestamps are correctly generated and set
+
+
 See what connections we are using
 
 - Create a `db-sessions` file in the `bin` directory
@@ -451,6 +478,28 @@ pip install -r requirements.txt
 
 - Create a new file `lib/db.py`
 
+```py
+from psycopg_pool import ConnectionPool
+import os
+
+def query_wrap_object(template):
+  sql = '''
+  (SELECT COALESCE(row_to_json(object_row),'{}'::json) FROM (
+  {template}
+  ) object_row);
+  '''
+
+def query_wrap_array(template):
+  sql = '''
+  (SELECT COALESCE(array_to_json(array_agg(row_to_json(array_row))),'[]'::json) FROM (
+  {template}
+  ) array_row);
+  '''
+
+connection_url = os.getenv("CONNECTION_URL")
+pool = ConnectionPool(connection_url)
+```
+
 - We need to add CONNECTION_URL as env var in docker-compose for our backend-flask application:
 
 ```yml
@@ -459,4 +508,148 @@ pip install -r requirements.txt
       CONNECTION_URL: "${CONNECTION_URL}"
 ```
 
-In our home activities we'll replace our mock endpoint with real api call:
+In our home_activities we'll do `from lib.db import pool`. Then, we'll replace our mock endpoint with real api call:
+
+```py
+from lib.db import pool, query_wrap_array
+
+      sql = query_wrap_array("""
+      SELECT
+        activities.uuid,
+        users.display_name,
+        users.handle,
+        activities.message,
+        activities.replies_count,
+        activities.reposts_count,
+        activities.likes_count,
+        activities.reply_to_activity_uuid,
+        activities.expires_at,
+        activities.created_at
+      FROM public.activities
+      LEFT JOIN public.users ON users.uuid = activities.user_uuid
+      ORDER BY activities.created_at DESC
+      """)
+      print(sql)
+      with pool.connection() as conn:
+        with conn.cursor() as cur:
+          cur.execute(sql)
+          # this will return a tuple
+          # the first field being the data
+          json = cur.fetchone()
+      return json[0]
+```
+
+- Set the CONNECTION_URL in docker-compose to reflect db rather than localhost IP. You can copy the full value from the env var of the backend container shell
+
+```
+postgresql://postgres:password@db:5432/cruddur
+```
+
+- Try to load cruddur on the browser and check the logs for backend
+- Cruddur should load the seed data
+
+## Establish a connection to the Postgres database on AWS
+
+- Start up the RDS instance previously created
+
+- Do `echo $PROD_CONNECTION_URL` to confirm it is properly set
+
+- Next, go to RDS on AWS and modify the inbound rules of the associated security group.
+
+- Choose port as Postgres (port number = 5432).
+
+- For the IP address, we need to put in our Gitpod IP address. This is gotten with the command:
+
+  ```sh
+  curl ifconfig.me
+  ```
+
+  - We can set this as env variable using:
+
+  ```sh
+  export GITPOD_IP=$(curl ifconfig.me)
+  ```
+
+  - You can do `echo $GITPOD_IP` to confirm
+
+  - Copy the IP and paste in the security group configuration. It will auto append `/32` indicating one IP address
+
+- You can set the description as "GITPOD" (all caps). Then create rule.
+
+- Now, you can connect to the database using:
+
+```sh
+psql $PROD_CONNECTION_URL
+```
+
+- Do `\l` to see any list of databases
+
+- Whenever we launch Gitpod, we'll have a new IP address. This means we will need to update the IP address on our RDS security group at every launch of Gitpod.
+
+- The inbound rule we defined for Postgres has a 'Security group rule ID'. The security group itself has a 'Security group ID'. We'll set these two values as env variables since they are constants unless deleted.
+
+```sh
+export DB_SG_ID="sg-***"
+gp env DB_SG_ID="sg-***"
+
+export DB_SG_RULE_ID="sgr-***"
+gp env DB_SG_RULE_ID="sgr-***"
+```
+
+- Now, whenever we need to modify the inbound rule to use current Gitpod IP, we can run the command:
+
+```sh
+aws ec2 modify-security-group-rules \
+    --group-id $DB_SG_ID \
+    --security-group-rules "SecurityGroupRuleId=$DB_SG_RULE_ID,SecurityGroupRule={Description=GITPOD,IpProtocol=tcp,FromPort=5432,ToPort=5432,CidrIpv4=$GITPOD_IP/32}"
+```
+
+- We can write a script for the above operation. In backend-flask/bin, create a new file _rds-update-sg-rule_ and set it as a bash script to run the 'aws ec2 modify-security-group-rules' command
+
+> Documentation: https://docs.aws.amazon.com/cli/latest/reference/ec2/modify-security-group-rules.html#examples
+
+- Add execute rights:
+
+```sh
+chmod u+x /bin/rds-update-sg-rule
+```
+
+- We want this script to run at startup of Gitpod. So, we will add a command step for postgres in the _.gitpod.yml_ file
+
+```yml
+    command: |
+      export GITPOD_IP=$(curl ifconfig.me)
+      source "$THEIA_WORKSPACE_ROOT/backend-flask/bin/rds-update-sg-rule"
+```
+
+- Next, we need to update 'db-connect' and 'db-schema-load' bash scripts for production:
+
+```sh
+if [ "$1" = "prod" ]; then
+  echo "Running in production mode"
+else
+  echo "Running in development mode"
+fi
+```
+
+- Now, try to run the script to establish connection (in backend-flask directory):
+
+```sh
+./bin/db-connect prod
+```
+
+- Edit the CONNECTION_URL in _docker-compose_ for production
+
+```yml
+      CONNECTION_URL: "${PROD_CONNECTION_URL}"
+```
+
+- Do compose up
+
+- Run the script to load schema
+
+```sh
+./bin/db-schema-load prod
+```
+
+- Try to access frontend cruddur on the browser. This should not have any data as we don't have any data on the system.
