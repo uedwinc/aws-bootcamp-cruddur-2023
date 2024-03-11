@@ -653,3 +653,166 @@ fi
 ```
 
 - Try to access frontend cruddur on the browser. This should not have any data as we don't have any data on the system.
+
+## Setup Cognito post confirmation lambda
+
+- We need to implement a custom authorizer for cognito. This is necessary because in setting up the user table (seed.sql), it requires a cognito user id. This will help verify a user at sign-up.
+
+1. Create a Lambda function
+
+- Sign into AWS, and go to Lambda and create a function
+  - Check Author from scratch
+  - Function name - cruddur-post-confirmation
+  - Runtime - Python 3.8
+  - Architecture - x86_64
+  - Under permissions, check 'Create a new role with basic Lambda permissions'
+  - Leave rest unchecked, and create function.
+
+//Create Lambda in same vpc as rds instance//
+
+- Create a new folder for Lambda function (/aws/lambdas/) and create a Lambda function python file ('cruddur-post-confirmation.py) matching the name we gave the lambda function
+
+- Paste the following code in the function:
+
+```py
+import json
+import psycopg2
+import os
+
+def lambda_handler(event, context):
+    user = event['request']['userAttributes']
+    print('userAttributes')
+    print(user)
+
+    user_display_name  = user['name']
+    user_email         = user['email']
+    user_handle        = user['preferred_username']
+    user_cognito_id    = user['sub']
+    try:
+      print('entered-try')
+      sql = f"""
+         INSERT INTO public.users (
+          display_name, 
+          email,
+          handle, 
+          cognito_user_id
+          ) 
+        VALUES(%s,%s,%s,%s)
+      """
+      print('SQL Statement ----')
+      print(sql)
+      conn = psycopg2.connect(os.getenv('CONNECTION_URL'))
+      cur = conn.cursor()
+      params = [
+        user_display_name,
+        user_email,
+        user_handle,
+        user_cognito_id
+      ]
+      cur.execute(sql,*params)
+      conn.commit() 
+
+    except (Exception, psycopg2.DatabaseError) as error:
+      print(error)
+    finally:
+      if conn is not None:
+          cur.close()
+          conn.close()
+          print('Database connection closed.')
+    return event
+```
+
+NB: In schema.sql, add column for email and do schema-load again
+
+- Paste the lambda code in the 'Code' section for the created Lambda function on AWS and click 'Deploy'
+
+- Next, under 'Configuration', go to 'Environment variables' and edit to add a new variable. Create an env with name as 'CONNECTION_URL' and value as the "PROD_CONNECTION_URL" value from Gitpod env. Then save.
+
+- Next, under 'Configuration', go to 'Permissions'. Click the Lambda role. Under 'Permissions policies', it should have a basic default AWSLambdaBasicexecutionRole. Under 'Add permissions', Click to create a custom policy. Select JSON and input the following code:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:CreateNetworkInterface",
+        "ec2:DeleteNetworkInterface",
+        "ec2:DescribeInstances", #This line is not necessary
+        "ec2:AttachNetworkInterface" #This line is not necessary
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+- Next, create with the following details: Name: AWSLambdaVPCAccessExecutionRole; Description: So AWS Lambda can create a network card
+
+- Attach the policy and permissions to the Lambda function.
+
+- Now, under 'Configuration' > 'permissions', the 'Resource summary' should have an Amazon EC2 reource added along with the Cloudwatch trigger added previously.
+
+- Still under 'Configuration', go to VPC. Edit and specify the VPC and other network protocols. You can use the defaults if that is where RDS was created since that will contain the security group with Postgres port opened.
+
+
+- In the 'Code' section, scroll down and Add a layer.
+
+  ```md
+  **## DOCUMENTATION**
+
+
+  ### For Development
+  https://github.com/AbhimanyuHK/aws-psycopg2
+
+  This is a custom compiled psycopg2 C library for Python. Due to AWS Lambda missing the required PostgreSQL libraries in the AMI image, we needed to compile psycopg2 with the PostgreSQL libpq.so library statically linked libpq library instead of the default dynamic link.
+
+  `EASIEST METHOD`
+
+  Some precompiled versions of this layer are available publicly on AWS freely to add to your function by ARN reference.
+
+  https://github.com/jetbridge/psycopg2-lambda-layer
+
+  - Just go to Layers + in the function console and add a reference for your region
+
+  Example: `arn:aws:lambda:ca-central-1:898466741470:layer:psycopg2-py38:1` 
+
+
+  `ALTERNATIVE`
+
+  Alternatively you can create your own development layer by downloading the psycopg2-binary source files from https://pypi.org/project/psycopg2-binary/#files
+
+  - Download the package for the lambda runtime environment: [psycopg2_binary-2.9.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl](https://files.pythonhosted.org/packages/36/af/a9f06e2469e943364b2383b45b3209b40350c105281948df62153394b4a9/psycopg2_binary-2.9.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl)
+
+  - Extract to a folder, then zip up that folder and upload as a new lambda layer to your AWS account
+
+  ### For Production
+
+  Follow the instructions on https://github.com/AbhimanyuHK/aws-psycopg2 to compile your own layer from postgres source libraries for the desired version.
+  ```
+
+- Check 'Specify an ARN' and specify one for your region from https://github.com/jetbridge/psycopg2-lambda-layer
+
+- 'Verify' and 'Add'
+
+- Next, we need to add trigger to the Lambda function in cognito
+
+- Go to Cognito. Click on the user pool created.
+
+- Under, 'User pool properties' tab, click on 'Add Lambda trigger'
+  - Trgger type: Sign-up
+  - Sign-up: Post confirmation trigger
+  - Assign Lambda function: Select 'cruddur-post-confirmation'
+  - Finally, click on 'Add Lambda trigger'
+
+- Try sign-up on cruddur
+
+- On the lambda page, under 'Monitor' tab, select 'Logs' and view the cloudwatch logs for the Lambda trigger
+
+- If any errors occur, make sure to delete the user in cognito user pool before retrying while debugging
+
+- On the terminal, connect to the production database: `./bin/db-connect prod`
+
+- Do: `SELECT * FROM USERS;` to view the newly created user table. You can do `\x on` for expanded view and run the command again.
