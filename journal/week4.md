@@ -816,3 +816,15 @@ NB: In schema.sql, add column for email and do schema-load again
 - On the terminal, connect to the production database: `./bin/db-connect prod`
 
 - Do: `SELECT * FROM USERS;` to view the newly created user table. You can do `\x on` for expanded view and run the command again.
+
+## Creating Activities
+
+- If you successfully sign into cruddur, there are no 'cruds'/data yet, so we need to edit backend service endpoint to create activities
+
+- Edit services/create_activity.py, edit lib/db.py, edit services/home_activities.py
+
+- Create sql files in backend-flask > db > sql > activities: 
+
+- Create files, _create.sql_, _object.sql_ and _home.sql_
+
+- Now, try entering cruds on cruddur and see if it posts
