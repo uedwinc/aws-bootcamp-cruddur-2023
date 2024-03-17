@@ -197,6 +197,8 @@ aws xray create-sampling-rule --cli-input-json file://aws/json/xray.json
 
 - Run the backend address and confirm logs on x-ray daemon and on AWS console
 
+> Instrument subsegment (video 34)(Doc: https://olley.hashnode.dev/aws-free-cloud-bootcamp-instrumenting-aws-x-ray-subsegments)
+
 
 ## CloudWatch Logs
 
