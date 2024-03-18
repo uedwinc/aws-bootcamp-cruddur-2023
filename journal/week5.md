@@ -283,3 +283,189 @@ chmod u+x /bin/ddb/patterns/list-conversations
 ```sh
 ./bin/ddb/patterns/list-conversations
 ```
+
+- Let's add command in _.gitpod.yml_ to install requirements.txt
+
+- We need to create a dynamodb library, _ddb.py_ in /lib directory
+
+- In /bin directory, create a folder "cognito" and file 'list-users'. 
+
+- On the terminal, you can list users using cli command:
+
+```sh
+aws cognito-idp list-users --user-pool-id=enter-cognito-user-pool-id-here
+```
+
+- We want to implement this in /bin/cognito/list-users using an sdk script:
+
+```py
+#!/usr/bin/env python3
+
+import boto3
+import os
+import json
+
+userpool_id = os.getenv("AWS_COGNITO_USER_POOL_ID")
+client = boto3.client('cognito-idp')
+params = {
+  'UserPoolId': userpool_id,
+  'AttributesToGet': [
+      'preferred_username',
+      'sub'
+  ]
+}
+response = client.list_users(**params)
+users = response['Users']
+
+print(json.dumps(users, sort_keys=True, indent=2, default=str))
+
+dict_users = {}
+for user in users:
+  attrs = user['Attributes']
+  sub    = next((a for a in attrs if a["Name"] == 'sub'), None)
+  handle = next((a for a in attrs if a["Name"] == 'preferred_username'), None)
+  dict_users[handle['Value']] = sub['Value']
+
+print(json.dumps(dict_users, sort_keys=True, indent=2, default=str))
+```
+
+- Set the cognito user pool id as env variable:
+
+```sh
+export AWS_COGNITO_USER_POOL_ID=""
+
+gp env AWS_COGNITO_USER_POOL_ID=""
+```
+
+- Update this in the docker-compose file (replace the hard coded value with reference to env)
+
+- Give execute permission to the 'list-users' script
+
+```sh
+chmod u+x /bin/cognito/list-users
+```
+
+- Run the script
+
+```sh
+./bin/cognito/list-users
+```
+
+- Now that we can list out the users, we need to create a new script to update the cognito user ids in our database
+
+- In "bin/db/", create a new file 'update_cognito_user_ids'
+
+- Give execute permission to the 'update_cognito_user_ids' script
+
+```sh
+chmod u+x /bin/db/update_cognito_user_ids
+```
+
+- Update /db/setup to execute the `update_cognito_user_ids` script
+
+- Make sure the database is running (docker-compose), then run the 'setup' script
+
+```sh
+./bin/db/setup
+```
+
+- If there is an issue with the 'update_cognito_user_ids' step, try to run it alone
+
+- You can connect to sql database to confirm the cognito user id is updated:
+
+```sh
+./bin/db/connect
+\x auto
+SELECT * FROM users;
+```
+
+- Modify _app.py_
+
+- Modify /services/message_groups.py
+
+- In /db/sql, create a new directory, "users". Create an sql file, 'uuid_from_cognito_user_id.sql' and enter the query:
+
+```sql
+SELECT
+  users.uuid
+FROM public.users
+WHERE 
+  users.cognito_user_id = %(cognito_user_id)s
+LIMIT 1
+```
+
+- Implement token authorization for MessageGroupPage.js, MessageGroupsPage.js files in 'frontend-react-js/src/pages/' and MessageForm.js in 'frontend-react-js/src/components/'
+
+```js
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`
+        },
+```
+
+- Create a 'CheckAuth' file in new dir frontend-react-js/src/lib/. This should hold the amplify authentication function
+
+- We will edit the HomeFeedPage.js, MessageGroupsPage.js and MessageGroupPage.js to use this function
+
+- Load cruddur homepage and see if it returns correctly
+
+- To check if the messages section of cruddur is working, let's seed data into dynamodb
+
+```sh
+./bin/ddb/schema-load
+
+./bin/ddb/seed
+```
+
+- Now, set the endpoint_url for ddb in docker-compose
+
+```yml
+      AWS_ENDPOINT_URL: "http://dynamodb-local:8000"
+```
+
+- Restart docker compose
+
+- Now, check the messages section of cruddur
+
+- Go to 'App.js' and set MessageGroupPage to return message_group_uuid instead of @handle
+
+- Also, in MessageGroupPage.js, we want to change the endpoint for that from @handle to params.message_group_uuid
+
+- Do the same for MessageGroupItem.js in /components
+
+- Edit ddb.py, list-conversations.py and get-conversation.py
+
+- Edit app.py to instrument messages
+
+- Edit /services/messages.py to replace mock data
+
+- Edit /lib/ddb.py to define list_messages
+
+- Update /src/components/MessageForm.js
+
+- Update app.py and /services/create_message.py
+
+- Create a new file /db/sql/users/create_message_users.sql
+
+- On cruddur, try to create a message
+
+- Edit App.js in frontend-resct-js
+
+- Create a new file /frontend-react-js/src/pages/MessageGroupNewPage.js
+
+- Edit app.py
+
+- In /services/, create a new file 'users_short.py'
+
+- Create a new file /db/sql/users/short.sql
+
+- In /components/, create a new file, 'MessageGroupNewItem.js'
+
+- Update MessageGroupFeed.js
+
+- Update MessageForm.js
+
+- Update create_message.py
+
+- Next, update ddb.py to define create_message_group
+
+- Now, in the message section with the newly added user 'Londo', try to send a message on cruddur
