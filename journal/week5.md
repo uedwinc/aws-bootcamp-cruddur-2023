@@ -469,3 +469,139 @@ LIMIT 1
 - Next, update ddb.py to define create_message_group
 
 - Now, in the message section with the newly added user 'Londo', try to send a message on cruddur
+
++ Update /bin/ddb/schema-load
+
+- Run schema-load to create table in production
+
+```sh
+./bin/ddb/schema-load prod
+```
+
+- Go to DynamoDB on AWS. Under 'Tables', click on the new table 'cruddur-messages'. Go to the 'Exports and streams' tab
+
+- Scroll down to 'DynamoDB stream details' and click 'Turn on' to enable streams on the table
+
+- Check 'New image' and click 'Turn on stream'
+
+- Create a VPC endpoint for dynamoDB service on your VPC
+- On the 'VPC' console, go to 'Endpoints'
+
+- Click 'Create endpoint'
+  - Name: ddb-cruddur
+  - Service category: Check 'AWS services'
+  - Services: Search dynamodb and check that service
+  - VPC: Select the default vpc
+  - Route tables: Check the default route table
+  - Policy: Full access
+  - Click 'Create endpoint'
+
+- Go to Lambda on AWS
+
+- Click 'Create function'
+  - Author from scratch
+  - Function name: cruddur-messaging-stream
+  - Runtime: Python *
+  - Architecture: x86_64
+  - Execution role: Create a new role with basic Lambda permissions
+  - Advanced settings: Check 'Enable VPC'. Setup VPC, subnets and security groups.
+  - Create function
+
+- In the code section of Lambda, enter the following Lambda function:
+
+```py
+import json
+import boto3
+from boto3.dynamodb.conditions import Key, Attr
+
+dynamodb = boto3.resource(
+ 'dynamodb',
+ region_name='ca-central-1',
+ endpoint_url="http://dynamodb.ca-central-1.amazonaws.com"
+)
+
+def lambda_handler(event, context):
+  pk = event['Records'][0]['dynamodb']['Keys']['pk']['S']
+  sk = event['Records'][0]['dynamodb']['Keys']['sk']['S']
+  if pk.startswith('MSG#'):
+    group_uuid = pk.replace("MSG#","")
+    message = event['Records'][0]['dynamodb']['NewImage']['message']['S']
+    print("GRUP ===>",group_uuid,message)
+    
+    table_name = 'cruddur-messages'
+    index_name = 'message-group-sk-index'
+    table = dynamodb.Table(table_name)
+    data = table.query(
+      IndexName=index_name,
+      KeyConditionExpression=Key('message_group_uuid').eq(group_uuid)
+    )
+    print("RESP ===>",data['Items'])
+    
+    # recreate the message group rows with new SK value
+    for i in data['Items']:
+      delete_item = table.delete_item(Key={'pk': i['pk'], 'sk': i['sk']})
+      print("DELETE ===>",delete_item)
+      
+      response = table.put_item(
+        Item={
+          'pk': i['pk'],
+          'sk': sk,
+          'message_group_uuid':i['message_group_uuid'],
+          'message':message,
+          'user_display_name': i['user_display_name'],
+          'user_handle': i['user_handle'],
+          'user_uuid': i['user_uuid']
+        }
+      )
+      print("CREATE ===>",response)
+```
+
+> Create a file to hold the lambda fuction in /aws/lambdas/cruddur-messaging-stream.py
+
+- Click 'Deploy'
+
+- Go to 'Configuration' tab, click on 'Permissions'
+
+- Click into the role name to assign a new policy
+
+- Under 'Permissions policies', drop down 'Add permissions' and click 'Attach policies'
+
+- Search and attach the following policy: 'AWSLambdaInvocation-DynamoDB' to grant the lambda IAM role permission to read the DynamoDB stream events
+
+- 'Add permissions'
+
+- Next, we need to grant the lambda IAM role permission to update table items
+  - Under 'Permissions policies', drop down 'Add permissions' and click 'Create inline policy'
+  - In 'Visual editor':
+    - Service: search dynamodb and select the service
+    - Actions: search and check the following - query, putitem, deleteitem
+    - Resources: check 'Specific'
+      - Index: 'Add ARN' - Specify region, and enter table name (cruddur-messages). 'Index name' is gotten from DynamoDB > Tables > cruddur-messages > Indexes tab and copy the name.
+      - Table: 'Add ARN' - Specify region and enter table name (cruddur-messages). Then 'Add'
+  - In 'JSON':
+    - Copy the code
+    - Create a new file: /aws/policies/cruddur-message-stream-policy.json to hold the code
+  - Review policy:
+    - Name: cruddur-messaging-stream-dynamodb
+  - Create policy
+
+- Go to DynamoDB on AWS. Under 'Tables', click on the new table 'cruddur-messages'. Go to the 'Exports and streams' tab
+
+- Scroll down to 'Trigger' and add your function as a trigger on the stream
+
+- Click 'Create a trigger'
+  - Select the Lambda function, 'cruddur-messaging-stream'
+  - Batch size: 1
+  - Check 'Turn on trigger'
+  - Create trigger
+
+- Comment out AWS_ENDPOINT_URL in docker-compose file
+
+- Do a compose up and check the frontend cruddur. The homepage should be seed data. Go to 'Messages' tab. This should be enter as we don't have any data yet
+
+- Go to the address bar and add /new/bayko or /new/londo to send a message to bayko. Enter a message and send.
+- If there is an error, try signing in again
+
+- In the Lambda function created, go to 'Monitor' tab and click to view CloudWatch logs in Log streams
+
+- You can also go to DynamoDB > Tables > cruddur-messages > Explore table items to view the database items
