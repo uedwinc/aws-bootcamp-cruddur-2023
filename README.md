@@ -30,7 +30,7 @@ The `/journal` directory contains
 - [ ] [Decentralized Authentication](journal/week3.md)
 - [ ] [RDS and Postgres](journal/week4.md)
 - [ ] [DynamoDB and Serverless Caching](journal/week5.md)
-- [ ] [Week 6](journal/week6.md)
+- [ ] [Deploying Containers](journal/week6.md)
 - [ ] [Week 7](journal/week7.md)
 - [ ] [Week 8](journal/week8.md)
 - [ ] [Week 9](journal/week9.md)

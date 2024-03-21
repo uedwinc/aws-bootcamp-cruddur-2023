@@ -1,1 +1,606 @@
-# Week 6 — Deploying Containers
+# Deploying Containers
+
+## Test RDS Connection
+
+Add this `test` script into `db` so we can easily check our connection from our container.
+
+```py
+#!/usr/bin/env python3
+
+import psycopg
+import os
+import sys
+
+connection_url = os.getenv("CONNECTION_URL")
+
+conn = None
+try:
+  print('attempting connection')
+  conn = psycopg.connect(connection_url)
+  print("Connection successful!")
+except psycopg.Error as e:
+  print("Unable to connect to the database:", e)
+finally:
+  conn.close()
+```
+
+- Add execute permission for this file
+
+```sh
+chmod u+x /backend-flask/bin/db/test
+```
+
+- If you want to test this in development, you need to temporarily change "CONNECTION_URL" to "PROD_CONNECTION_URL"
+
+```sh
+./bin/db/test
+```
+
+## Task Flask Script
+
+We'll add a health-check endpoint for our flask app in `app.py`
+
+```py
+@app.route('/api/health-check')
+def health_check():
+  return {'success': True}, 200
+```
+
+We'll create a new bin script at `bin/flask/health-check`
+
+- Add execute permission for this file
+
+```sh
+chmod u+x /bin/flask/health-check
+```
+
+- Run the script
+
+```sh
+./bin/flask/health-check
+```
+
+- This should return a 'Connection Refused' error
+
+## Create CloudWatch Log Group
+
+```sh
+aws logs create-log-group --log-group-name "cruddur"
+
+aws logs put-retention-policy --log-group-name "cruddur" --retention-in-days 1
+```
+
+- You can confirm on the console (CloudWatch > Log groups)
+
+## Create ECS Cluster
+
+```sh
+aws ecs create-cluster \
+--cluster-name cruddur \
+--service-connect-defaults namespace=cruddur
+```
+
+- You can confirm this on the ECS console
+
+## Preparing the Containers
+
+## Create ECR repo and push image
+
+### For Base-image python
+
+**Create the repository**
+
+```sh
+aws ecr create-repository \
+  --repository-name cruddur-python \
+  --image-tag-mutability MUTABLE
+```
+
+> Login to ECR
+
+```sh
+aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com"
+```
+
+**Set URL**
+
+```sh
+export ECR_PYTHON_URL="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/cruddur-python"
+echo $ECR_PYTHON_URL
+```
+
+**Pull Image**
+
+```sh
+docker pull python:3.10-slim-buster
+```
+
+- You can confirm using:
+
+```sh
+docker images
+```
+
+**Tag Image**
+
+```sh
+docker tag python:3.10-slim-buster $ECR_PYTHON_URL:3.10-slim-buster
+```
+
+- You can confirm using:
+
+```sh
+docker images
+```
+
+**Push Image**
+
+```sh
+docker push $ECR_PYTHON_URL:3.10-slim-buster
+```
+
+- You can confirm on the ECR console
+
+### For Flask
+
+- In the flask dockerfile, replace the dockerhub image name in the 'From' section with the URI of the ECR image on AWS
+
+**Create the repository**
+
+```sh
+aws ecr create-repository \
+  --repository-name backend-flask \
+  --image-tag-mutability MUTABLE
+```
+
+- You should be logged into ECR already from the previous login command
+
+**Set URL**
+
+```sh
+export ECR_BACKEND_FLASK_URL="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/backend-flask"
+echo $ECR_BACKEND_FLASK_URL
+```
+
+**Build Image**
+
+- Make sure you are in the backend-flask directory
+
+```sh
+docker build -t backend-flask .
+```
+
+**Tag Image**
+
+- Remember to put the :latest tag on the end
+
+```sh
+docker tag backend-flask:latest $ECR_BACKEND_FLASK_URL:latest
+```
+
+**Push Image**
+
+```sh
+docker push $ECR_BACKEND_FLASK_URL:latest
+```
+
+### For Frontend React
+
+- Create a new Dockerfile, `frontend-react-js/Dockerfile.prod`
+
+- Create new file, `frontend-react-js/nginx.conf` to serve as light-weight webserver
+
+- Edit `.gitignore` to ignore the build aoutput
+
+
+- Run a dry build to check
+
+```sh
+cd frontend-react-js
+
+npm run build
+```
+
+- Edit /pages/ConfirmationPage.js and /pages/RecoverPage.js to remove error
+- Change all setCognitoErrors to setErrors
+- Run build again
+
+**Create Repo**
+
+```sh
+aws ecr create-repository \
+  --repository-name frontend-react-js \
+  --image-tag-mutability MUTABLE
+```
+
+- Make sure you are logged into ECR
+
+**Set URL**
+
+```sh
+export ECR_FRONTEND_REACT_URL="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/frontend-react-js"
+echo $ECR_FRONTEND_REACT_URL
+```
+
+**Build Image**
+
+```sh
+docker build \
+--build-arg REACT_APP_BACKEND_URL="https://4567-$GITPOD_WORKSPACE_ID.$GITPOD_WORKSPACE_CLUSTER_HOST" \ #Replace this with "http://loadbalancer-DNS-name:4567"
+--build-arg REACT_APP_AWS_PROJECT_REGION="$AWS_DEFAULT_REGION" \
+--build-arg REACT_APP_AWS_COGNITO_REGION="$AWS_DEFAULT_REGION" \
+--build-arg REACT_APP_AWS_USER_POOLS_ID="ca-central-1_CQ4wDfnwc" \
+--build-arg REACT_APP_CLIENT_ID="5b6ro31g97urk767adrbrdj1g5" \
+-t frontend-react-js \
+-f Dockerfile.prod \
+.
+```
+
+**Tag Image**
+
+```sh
+docker tag frontend-react-js:latest $ECR_FRONTEND_REACT_URL:latest
+```
+
+**Push Image**
+
+```sh
+docker push $ECR_FRONTEND_REACT_URL:latest
+```
+
+If you want to run and test it
+
+```sh
+docker run --rm -p 3000:3000 -it frontend-react-js 
+```
+
+## Register Task Defintions
+
+### Passing Senstive Data to Task Defintion
+
+https://docs.aws.amazon.com/AmazonECS/latest/developerguide/specifying-sensitive-data.html 
+https://docs.aws.amazon.com/AmazonECS/latest/developerguide/secrets-envvar-ssm-paramstore.html
+
+- We will be setting various sensitive data up in AWS Systems Manager
+- Make sure to have set all as env variables first. 
+
+The only one left is OTEL_EXPORTER_OTLP_HEADERS, so do:
+
+```sh
+export OTEL_EXPORTER_OTLP_HEADERS="x-honeycomb-team=${HONEYCOMB_API_KEY}"
+
+echo $OTEL_EXPORTER_OTLP_HEADERS
+```
+
+- Now, run the following lines of code individually to set them up:
+
+```sh
+aws ssm put-parameter --type "SecureString" --name "/cruddur/backend-flask/AWS_ACCESS_KEY_ID" --value $AWS_ACCESS_KEY_ID
+aws ssm put-parameter --type "SecureString" --name "/cruddur/backend-flask/AWS_SECRET_ACCESS_KEY" --value $AWS_SECRET_ACCESS_KEY
+aws ssm put-parameter --type "SecureString" --name "/cruddur/backend-flask/CONNECTION_URL" --value $PROD_CONNECTION_URL
+aws ssm put-parameter --type "SecureString" --name "/cruddur/backend-flask/ROLLBAR_ACCESS_TOKEN" --value $ROLLBAR_ACCESS_TOKEN
+aws ssm put-parameter --type "SecureString" --name "/cruddur/backend-flask/OTEL_EXPORTER_OTLP_HEADERS" --value "x-honeycomb-team=$HONEYCOMB_API_KEY"
+```
+
+- Confirm that all are set on the console at AWS Systems Manager > Parameter store > My parameters
+
+### Create Task and Exection Roles for Task Defintion
+
+**Create ExecutionRole**
+
+- Create role `aws/policies/service-assume-role-execution-policy.json`
+
+```sh
+aws iam create-role \    
+--role-name CruddurServiceExecutionRole  \   
+--assume-role-policy-document "file://aws/policies/service-assume-role-execution-policy.json"
+```
+
+- Create policy `aws/policies/service-execution-policy.json`
+
+```sh
+aws iam put-role-policy \
+--role-name CruddurServiceExecutionRole \
+--policy-name CruddurServiceExecutionPolicy \
+--policy-document "file://aws/policies/service-execution-policy.json"
+```
+
+- The above should attach the policy to the CruddurServiceExecutionRole as specified.
+
+- If not, use the below command to attach it
+
+- Attach role policy:
+
+```sh
+aws iam attach-role-policy \
+--policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy \
+--role-name CruddurServiceExecutionRole
+```
+
+**Create TaskRole**
+
+- Create role
+
+```sh
+aws iam create-role \
+    --role-name CruddurTaskRole \
+    --assume-role-policy-document "{
+  \"Version\":\"2012-10-17\",
+  \"Statement\":[{
+    \"Action\":[\"sts:AssumeRole\"],
+    \"Effect\":\"Allow\",
+    \"Principal\":{
+      \"Service\":[\"ecs-tasks.amazonaws.com\"]
+    }
+  }]
+}"
+```
+
+- Create policy (this will attach the policy to the CruddurtaskRole as defined)
+
+```sh
+aws iam put-role-policy \
+  --policy-name SSMAccessPolicy \
+  --role-name CruddurTaskRole \
+  --policy-document "{
+  \"Version\":\"2012-10-17\",
+  \"Statement\":[{
+    \"Action\":[
+      \"ssmmessages:CreateControlChannel\",
+      \"ssmmessages:CreateDataChannel\",
+      \"ssmmessages:OpenControlChannel\",
+      \"ssmmessages:OpenDataChannel\"
+    ],
+    \"Effect\":\"Allow\",
+    \"Resource\":\"*\"
+  }]
+}"
+```
+
+- Attach the following policies:
+
+```sh
+aws iam attach-role-policy --policy-arn arn:aws:iam::aws:policy/CloudWatchFullAccess --role-name CruddurTaskRole
+aws iam attach-role-policy --policy-arn arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess --role-name CruddurTaskRole
+```
+
+- Confirm all the permissions on the console
+
+### Create task Definition
+
+- Create a new folder `/aws/task-definitions` and add new files 'backend-flask.json' and 'frontend-react-js.json'
+
+### Register Task Defintion
+
+```sh
+aws ecs register-task-definition --cli-input-json file://aws/task-definitions/backend-flask.json
+```
+
+```sh
+aws ecs register-task-definition --cli-input-json file://aws/task-definitions/frontend-react-js.json
+```
+
+- Confirm on the console; ECS > Task definitions
+
+## Export VPC and Subnets
+
+```sh
+export DEFAULT_VPC_ID=$(aws ec2 describe-vpcs \
+--filters "Name=isDefault, Values=true" \
+--query "Vpcs[0].VpcId" \
+--output text)
+echo $DEFAULT_VPC_ID
+```
+
+```sh
+export DEFAULT_SUBNET_IDS=$(aws ec2 describe-subnets  \
+ --filters Name=vpc-id,Values=$DEFAULT_VPC_ID \
+ --query 'Subnets[*].SubnetId' \
+ --output json | jq -r 'join(",")')
+echo $DEFAULT_SUBNET_IDS
+```
+
+## Create Security Group
+
+```sh
+export CRUD_SERVICE_SG=$(aws ec2 create-security-group \
+  --group-name "crud-srv-sg" \
+  --description "Security group for Cruddur services on ECS" \
+  --vpc-id $DEFAULT_VPC_ID \
+  --query "GroupId" --output text)
+echo $CRUD_SERVICE_SG
+```
+
+**Authorize port 80 on the security group**
+
+```sh
+aws ec2 authorize-security-group-ingress \
+  --group-id $CRUD_SERVICE_SG \
+  --protocol tcp \
+  --port 4567 \
+  --cidr 0.0.0.0/0
+```
+
+> if we need to get the sg group id again
+
+```sh
+export CRUD_SERVICE_SG=$(aws ec2 describe-security-groups \
+  --filters Name=group-name,Values=crud-srv-sg \
+  --query 'SecurityGroups[*].GroupId' \
+  --output text)
+```
+
+## Create Services
+
+- Create service file for backend-flask `aws/json/service-backend-flask.json`
+
+- Create service file for frontend-react-js `aws/json/service-frontend-react-js.json`
+
+- Create load balancer first (See below)
+
+- Create service:
+
+```sh
+aws ecs create-service --cli-input-json file://aws/json/service-backend-flask.json
+```
+
+```sh
+aws ecs create-service --cli-input-json file://aws/json/service-frontend-react-js.json
+```
+
+- Confirm that the services are created in ECS on the console
+
+- Go to Load balancer > Target groups > 
+- Click on the target group name. Under the targets tab, check health checks
+
+- You can debug issues like health-check and others by shelling into the container
+- Health-check may take time to show healthy
+
+### Connection to Container Shell via Sessions Manaager (Fargate)
+ 
+https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html#install-plugin-linux
+https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html#install-plugin-verify
+
+Install for Ubuntu
+```sh
+curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "session-manager-plugin.deb"
+sudo dpkg -i session-manager-plugin.deb
+```
+
+Verify its working
+```sh
+session-manager-plugin
+```
+
+Connect to the container
+ ```sh
+aws ecs execute-command  \
+--region $AWS_DEFAULT_REGION \
+--cluster cruddur \
+--task dceb2ebdc11c49caadd64e6521c6b0c7 \
+--container backend-flask \
+--command "/bin/bash" \
+--interactive
+```
+
+Test Flask App is running
+
+```sh
+./bin/flask/health-check
+```
+
+- Update `.gitpod.yml` file to install session manager plugin
+
+- Create a file to connect to container; `/bin/ecs/connect-to-fargate`
+
+- Give execute permission:
+
+```sh
+chmod u+x /bin/ecs/connect-to-fargate
+```
+
+- Connect
+
+```sh
+./bin/ecs/connect-to-fargate
+```
+
+**Check Service IP Health-check**
+
+- You can get the IP address of the service from the 'Task' section on ECS or 'Network interfaces' section on EC2 dashboard
+
+- Check the endpoint: `IP/api/health-check` #Can't use this if load balancer is attached
+
+- Copy load balancer DNS and check on browser with the endpoint `/api/health-check`
+
+**Update RDS SG to allow access for the last security group**
+
+```sh
+aws ec2 authorize-security-group-ingress \
+  --group-id $DB_SG_ID \
+  --protocol tcp \
+  --port 5432 \
+  --source-group $CRUD_SERVICE_SG \
+  --tag-specifications 'ResourceType=security-group,Tags=[{Key=Name,Value=BACKENDFLASK}]'
+```
+
+- Now, try to connect to the database (Inside the backend-flask container shell)
+
+```sh
+./bin/db/test
+```
+
+- Check the endpoint: `IP/api/activities/home`
+
+## Create Load Balancer
+
+- Select Application load balancer and click 'Create'
+    - Load balancer name: cruddur-alb
+    - Scheme: Internet-facing
+    - Ip address type: IPv4
+    - VPC: Default
+    - Mappings: Check all subnets
+    - Remove attached security group and create a new one:
+        - Name: cruddur-alb-sg
+        - Description: cruddur-alb-sg
+        - Inbound rules: HTTP and HTTPS (from anywhere or your specific IP)
+        //Ignore for now, but if the listner is having issues, you will need to open ports 4567 and maybe 3000//
+        - Create
+        - Go to the service security group (crud-srv-sg) and allow inbound rule access for 'cruddur-alb-sg'
+            - Port range: 4567
+            - Description: CruddurALB
+            - Delete the original inbound rule so that traffic is routed only through the load balancer
+    - Select the load balancer security group (cruddur-alb-sg)
+    - Listners and routing:
+        - Protocol: HTTP
+        - Port: 4567
+        - Default action: Select target group. We don't have one yet so we select 'Create target group'
+            - Choose target type: IP addresses
+            - Target group name: cruddur-backend-flask-tg
+            - Protocol: HTTP
+            - Port: 4567
+            - IP address type: IPv4
+            - VPC: default
+            - Protocol version: HTTP1
+            - Health check:
+                - Health check protocol: HTTP
+                - Health check path: `/api/health-check`
+            - Advanced health check settings:
+                - Port: traffic port
+                - Healthy threshold: 3
+                - Unhealthy threshold: 2
+                - Timeout: 5
+                - Interval: 30
+                - Success codes: 200
+            - Next
+            - Ignore register targets and create
+        - Select the newly created target group
+    - Add a listner for the frontend
+        - Protocol: HTTP
+        - Port: 3000
+        - Default action: Select target group. We don't have one yet so we select 'Create target group'
+            - Choose target type: IP addresses
+            - Target group name: cruddur-frontend-react-js
+            - Protocol: HTTP
+            - Port: 3000
+            - IP address type: IPv4
+            - VPC: default
+            - Protocol version: HTTP1
+            - Health check: (ignore)
+                - Health check protocol: HTTP
+                - Health check path: /
+            - Advanced health check settings:
+                - Port: traffic port
+                - Healthy threshold: 3
+                - Unhealthy threshold: 2
+                - Timeout: 5
+                - Interval: 30
+                - Success codes: 200
+            - Next
+            - Ignore register targets and create
+        - Select the newly created target group
+    - Create the load balancer
+
+
+> Use this command to generate the skeleton for any cli command specified: `aws cli create-service --generate-cli-skeleton`. Here, create-service is the specified command.
+
