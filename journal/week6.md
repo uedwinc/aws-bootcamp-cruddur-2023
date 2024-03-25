@@ -453,6 +453,10 @@ aws ecs create-service --cli-input-json file://aws/json/service-frontend-react-j
 - Go to Load balancer > Target groups > 
 - Click on the target group name. Under the targets tab, check health checks
 
+- Authorize port 3000 in the security group of the frontend service and attach the load balancer security group as source
+
+- Copy the load balancer DNS name and open on browser with port 3000 to load frontend
+
 - You can debug issues like health-check and others by shelling into the container
 - Health-check may take time to show healthy
 
@@ -491,18 +495,22 @@ Test Flask App is running
 
 - Update `.gitpod.yml` file to install session manager plugin
 
-- Create a file to connect to container; `/bin/ecs/connect-to-fargate`
+- Create a file to connect to backend container; `/bin/ecs/connect-to-backend-flask`
+
+- Create a file to connect to frontend container; `/bin/ecs/frontend-react-js`
 
 - Give execute permission:
 
 ```sh
-chmod u+x /bin/ecs/connect-to-fargate
+chmod u+x /bin/ecs/connect-to-backend-flask
+
+chmod u+x /bin/ecs/connect-to-frontend-react-js
 ```
 
 - Connect
 
 ```sh
-./bin/ecs/connect-to-fargate
+./bin/ecs/connect-to-backend-flask
 ```
 
 **Check Service IP Health-check**
@@ -604,3 +612,187 @@ aws ec2 authorize-security-group-ingress \
 
 > Use this command to generate the skeleton for any cli command specified: `aws cli create-service --generate-cli-skeleton`. Here, create-service is the specified command.
 
+
+# Custom Domain
+
+- Go to Route53
+- Create a hosted zone (eg app.cruddur.com) and copy the name servers attached
+
+- Go to the domain name servers of your domain and update/change the nameservers to the hosted zone nameservers
+
+- To attach an SSL certificate, go to ACM (certificate manager)
+- Request a certificate (Request a public certificate)
+  - Fully qualified domain name: cruddur.com
+  - Choose Add another name to this certificate: *.cruddur.com
+  - Validation method: DNS validation
+  - Key algorithm: RSA 2048 (defaut)
+  - Request
+
+- Refresh the Certificates page. 
+- Click into the certificate. Wait for success.
+- Under Domains, click Create records in Route53
+- Make sure everything is checked and click Create. 
+- Confirm new record on Route53
+
+- In EC2, go to Load balancer
+- Check the load balancer created
+- Go to Listeners. Add listener
+  - Protocol: HTTP, Port: 80
+  - Default Actions: Under Add action dropdown, select Redirect
+  - Protocol: HTTPS, Port: 443
+  - Status code: 302 Found
+  - Add
+- Add another listener
+  - Protocol: HTTPS, Port: 443
+  - Default Actions: Under Add action dropdown, select Forward
+  - Target group: cruddur-frontend-react-js
+  - Default SSL/TLS certificate: Select the ACM certificate
+  - Add
+- You can delete the two previous other listeners
+
+- Under Listeners
+- Check the HTTPS:443, under Actions tab, Manage rules
+- There should be a default that goes to the frontend-react-js
+- Click on the + button to add, then click Insert rule
+  - Add condition: Host header...     - Value: api.cruddur.com
+  - Add Action: Forward               - Target group: cruddur-backend-flask-tg
+  - Save
+
+- Point Route53 to the load balancer
+- Go to Route53 > Hosted zones
+- click into the cruddur.com hosted zone
+- Create a record
+  - Record name: (leave empty so it is naked and goes to cruddur.com or you can add "app" in my case)
+  - Record type: A - Routes traffic to...
+  - Toggle 'Alias'
+  - Route traffic to: Alias to application and classic load balancer
+  - Choose 'Region' and 'Load balancer'
+  - Simple routing
+  - Evaluate target health on
+  - Create record
+
+- Create a record
+  - Record name: api
+  - Record type: A - Routes traffic to...
+  - Toggle 'Alias'
+  - Route traffic to: Alias to application and classic load balancer
+  - Choose 'Region' and 'Load balancer'
+  - Simple routing
+  - Evaluate target health on
+  - Create record
+
+**Confirm**
+
+```sh
+ping api.cruddur.com
+
+curl api.cruddur.com/api/health-check
+```
+
+- Confirm address on browser: `api.cruddur.com/api/health-check` (possibly a different browser like firefox)
+- Also check if the connection is secure on the browser
+
+- You can edit the backend task definition. In the 'environment' section, change 'FRONTEND_URL' value from * to https://cruddur.com and 'BACKEND_URL' value from * to https://api.cruddur.com
+
+- Update the task definition: `aws ecs register-task-definition --cli-input-json file://aws/task-definitions/backend-flask.json`
+
+Using previous commands (for frontend):
+- Login to ECR
+- Set URL
+- Build image:
+  - Change the backend_url to "https://api.cruddur.com"
+- Tag image
+- Push image
+
+- Go to ECS on the console
+- Click the cruddur cluster
+- Under services, check backend-flask and click update
+  - Check force deployment
+  - Choose latest revision
+  - Update
+- Under services, check frontend-react-js and click update
+  - Check force deployment
+  - Confirm latest revision
+  - Update
+- Wait for it to update
+
+- Go to EC2 > Load balancing > Target groups
+- Confirm that both target groups are healthy
+
+- You can check health-check url and cruddur.com on the browser
+- Sign-in and create cruds. Also check messages section.
+
+# Securing Flask
+
+https://flask.palletsprojects.com/en/2.3.x/debugging/
+
+- Edit inbound rules for cruddur-alb-sg to only work for my IP (for now)
+- Leave only ports for HTTPS and HTTP and allow only My IP
+
+- In backend-flask/ directory, create a new dockerfile (/Dockerfile.prod) for production and edit the original dockerfile to allow debugging
+
+`/backend-flask/Dockerfile`
+```Dockerfile
+FROM 387543059434.dkr.ecr.ca-central-1.amazonaws.com/cruddur-python:3.10-slim-buster
+
+# Inside Container
+# make a new folder inside container
+WORKDIR /backend-flask
+
+# Outside Container -> Inside Container
+# this contains the libraries want to install to run the app
+COPY requirements.txt requirements.txt
+
+# Inside Container
+# Install the python libraries used for the app
+RUN pip3 install -r requirements.txt
+
+# Outside Container -> Inside Container
+# . means everything in the current directory
+# first period . - /backend-flask (outside container)
+# second period . /backend-flask (inside container)
+COPY . .
+
+EXPOSE ${PORT}
+
+# CMD (Command)
+# python3 -m flask run --host=0.0.0.0 --port=4567
+CMD [ "python3", "-m" , "flask", "run", "--host=0.0.0.0", "--port=4567", "--debug"]
+```
+
+- Create a script to log into ECR `/bin/ecr/login`
+
+- Add execute permission and login
+
+```sh
+chmod u+x /bin/ecr/login
+
+./bin/ecr/login
+```
+
+- Create the following directories: `/bin/docker/build/`(files here: backend-flask-prod, frontend-react-js-prod), `/bin/docker/push/` (files here: backend-flask-prod), `/bin/docker/run/`
+
+- Give execute permissions
+
+- Build the production image
+
+```sh
+./bin/docker/build/backend-flask-prod
+```
+
+- Set URL, tag and push
+
+```sh
+./bin/docker/push/backend-flask-prod
+```
+
+- Now, we need to update task definition on ECS and force deployment
+- Create a new file: `/bin/ecs/force-deploy-backend-flask`
+
+- Give execute permissions
+
+- Run
+
+```sh
+./bin/ecs/force-deploy-backend-flask
+```
