@@ -834,3 +834,12 @@ https://api.cruddur.com/api/health-check
 https://api.cruddur.com/api/activities/home
 
 - Type in a wrong endpoint to be sure it doesn't return a typeerror (instead an internal server error maybe) as that debug mode should not be seen from customer end
+
+- If you encounter any errors, you can also check rollbar for error logging
+
+> Incase you want to reduce spend and stop your running containers, go to ECS, check the service and click 'update'. Then change the 'Desired tasks' to zero(0). Then, when you stop your tasks, it won't start another one.
+
+- Restructure the /bin directory
+
+- Create an sql script to kill all connections: /backend-flask/db/kill-all-connections.sql
+- Create a script to run the kill all db connections: /bin/db/kill-all
