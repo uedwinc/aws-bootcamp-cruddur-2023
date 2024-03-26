@@ -791,7 +791,7 @@ chmod u+x /bin/ecr/login
 
 - Give execute permissions
 
-- Run
+- Execute
 
 ```sh
 ./bin/ecs/force-deploy-backend-flask
@@ -805,3 +805,32 @@ chmod u+x /bin/ecr/login
 ```sh
 ./bin/docker/build/frontend-react-js-prod
 ```
+
+- Create push script for frontend-react-js
+
+- Make the script executable
+
+- Execute the script
+
+```sh
+./bin/docker/push/frontend-react-js-prod
+```
+
+- Now, we need to update task definition on ECS and force deployment
+- Create a new file: `/bin/ecs/force-deploy-frontend-react-js`
+
+- Give execute permissions
+
+- Execute
+
+```sh
+./bin/ecs/force-deploy-frontend-react-js
+```
+
+- Confirm the following url paths on browser
+
+https://api.cruddur.com
+https://api.cruddur.com/api/health-check
+https://api.cruddur.com/api/activities/home
+
+- Type in a wrong endpoint to be sure it doesn't return a typeerror (instead an internal server error maybe) as that debug mode should not be seen from customer end
