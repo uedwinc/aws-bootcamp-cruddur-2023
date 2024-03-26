@@ -770,7 +770,7 @@ chmod u+x /bin/ecr/login
 ./bin/ecr/login
 ```
 
-- Create the following directories: `/bin/docker/build/`(files here: backend-flask-prod, frontend-react-js-prod), `/bin/docker/push/` (files here: backend-flask-prod), `/bin/docker/run/`
+- Create the following directories: `/bin/docker/build/`(files here: backend-flask-prod, frontend-react-js-prod), `/bin/docker/push/` (files here: backend-flask-prod), `/bin/docker/run/` (files here: backend-flask-prod)
 
 - Give execute permissions
 
@@ -795,4 +795,13 @@ chmod u+x /bin/ecr/login
 
 ```sh
 ./bin/ecs/force-deploy-backend-flask
+```
+
+- Restructure bin/ directory
+  - Move the /bin dir up one level outside backend-flask/
+
+- Build the frontend-react-js
+
+```sh
+./bin/docker/build/frontend-react-js-prod
 ```
