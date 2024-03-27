@@ -849,3 +849,38 @@ https://api.cruddur.com/api/activities/home
 - Edit frontend-react-js/src/lib/CheckAuth.js
 - Edit HomeFeedPage.js, MessageGroupNewPage.js, MessageGroupPage.js, MessageGroupsPage.js
 - Edit MessageForm.js
+
+# Configure Container Insights
+
+- Configure xray in task-definitions/backend-flask.json
+
+- Create a bin/backend/register and bin/frontend/register scripts to register task definitions
+
+- Give execute rights to the files
+
+- Run the register files
+
+- Deploy /bin/backend/deploy
+
+- Confirm that all the services are running on ECS. Click into all to see the various tasks
+
+- Create env files to hold our environment variables
+  - First, we need to store the env variables in env.erb files: erb/backend-flask.env.erb and erb/frontend-react-js.env.erb
+  - Next, we need to create ruby scripts that generate the envs: /bin/backend/generate-env and /bin/frontend/generate-env
+  - When these files are run, they generate a `.env` file. Let's ignore that in .gitignore
+  - Give execute permission to the generate-env files
+  - Add command to generate-env at startup in .gitpod.yml file
+  - Remove env variables from docker-compose and reference generated env file path
+
+- Create bin/frontend/run script
+
+- Edit docker-compose networks
+
+- Create bin/busybox to be used for debugging
+  - Give execute permission
+  - Run the file
+  - While connected, go to another tab and run `docker network inspect cruddur-net`
+  - Search for the busybox service (just look through for a weirdly named service)
+  - In the shell tab of busybox, run some commands to be debug: `ping xray-daemon`, `telnet xray-daemon 2000`
+
+- Move health-check file to the backend-flask/bin directory
