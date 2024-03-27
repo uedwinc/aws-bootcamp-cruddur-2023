@@ -843,3 +843,9 @@ https://api.cruddur.com/api/activities/home
 
 - Create an sql script to kill all connections: /backend-flask/db/kill-all-connections.sql
 - Create a script to run the kill all db connections: /bin/db/kill-all
+
+# Implement Cognito Refresh Token
+
+- Edit frontend-react-js/src/lib/CheckAuth.js
+- Edit HomeFeedPage.js, MessageGroupNewPage.js, MessageGroupPage.js, MessageGroupsPage.js
+- Edit MessageForm.js
