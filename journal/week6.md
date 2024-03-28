@@ -884,3 +884,16 @@ https://api.cruddur.com/api/activities/home
   - In the shell tab of busybox, run some commands to be debug: `ping xray-daemon`, `telnet xray-daemon 2000`
 
 - Move health-check file to the backend-flask/bin directory
+
+- Now, to turn on container insights, go to ECS > Custers > cruddur
+  - Click 'Update cluster'
+  - Expand 'Monitoring' tab and check 'Use container insights'
+  - Click 'Update'
+
+- Go to CloudWatch > Container insights
+
+# Corectly Implementing Timezones for ISO 8601
+
+- Edit bin/ddb/seed, backend-flask/lib/ddb.py
+- Create a new file: frontend-react-js/src/lib/DateTimeFormats.js
+- Edit frontend-react-js/src/components/MessageItem.js, frontend-react-js/src/components/MessageItem.css, frontend-react-js/src/components/MessageGroupItem.js, frontend-react-js/src/components/ActivityContent.js
