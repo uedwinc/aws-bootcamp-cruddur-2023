@@ -32,7 +32,7 @@ The `/journal` directory contains
 - [ ] [DynamoDB and Serverless Caching](journal/week5.md)
 - [ ] [Deploying Containers](journal/week6.md)
 - [ ] [Week 7](journal/week7.md)
-- [ ] [Week 8](journal/week8.md)
+- [ ] [Serverless Image Processing](journal/week8.md)
 - [ ] [Week 9](journal/week9.md)
 - [ ] [Week 10](journal/week10.md)
 - [ ] [Week 11](journal/week11.md)
