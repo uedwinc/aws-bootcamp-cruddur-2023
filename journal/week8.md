@@ -536,3 +536,57 @@ cdk destroy
 - Edit frontend-react-js/src/pages/NotificationsFeedPage.js
 - Create new files: frontend-react-js/src/components/ProfileHeading.js and frontend-react-js/src/components/ProfileHeading.css
   - **You will need to modify something here to be specific to you**
+
+
+# Implement Migrations Backend Endpoint and Profile Form
+
+- Create a bash script to prepare all databases: bin/prepare
+- Give it execute permissions
+
+- Create a new file: frontend-react-js/jsconfig.json
+
+- Create new files: frontend-react-js/src/components/ProfileForm.js and frontend-react-js/src/components/ProfileForm.css
+
+- Modify frontend-react-js/src/components/ReplyForm.css
+
+- Create new file: frontend-react-js/src/components/Popup.css
+
+- Modify frontend-react-js/src/App.js
+
+- Edit backend-flask/app.py
+
+- Create file: backend-flask/services/update_profile.py
+
+- Create file: backend-flask/db/sql/users/update.sql
+
+- Create new directory and file: bin/generate/migration
+
+- Create the migration directory and add a .keep file: backend-flask/db/migrations/.keep
+
+- Give execute permission to the migration file:
+```sh
+chmod u+x bin/generate/migration
+```
+
+- Run the file:
+```sh
+./bin/generate/migration add_bio_column
+```
+
+- Confirm the file is generated in backend-flask/db/migrations/
+- Edit this generated file as shown: https://github.com/omenking/aws-bootcamp-cruddur-2023/blob/week-8-again/backend-flask/db/migrations/16812294605993273_add_bio_column.py
+
+- Create files: bin/db/migrate and bin/db/rollback
+- Give execute permission to both files
+
+- Modify backend-flask/db/schema.sql
+- Modify backend-flask/lib/db.py
+
+- Run the migrate and rollback files:
+```sh
+./bin/db/migrate
+
+./bin/db/rollback
+```
+
+- You can confirm by connecting to psql
