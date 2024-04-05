@@ -590,3 +590,157 @@ chmod u+x bin/generate/migration
 ```
 
 - You can confirm by connecting to psql
+
+
+# Implement Avatar Uploading
+
+- To start things up, run the bootstrap script, then docker-compose, then db/setup, then ddb/schema-load, then ddb/seed, then migrate
+
+**Setup Lambda function to use in API Gateway**
+
+- Go to Lambda > Function > Create function
+  - Function name: CruddurAvatarUpload
+  - Runtime: Ruby 2.7
+  - Architecture: x86_64
+  - Execution role: Create a new role with basic Lambda permissions
+  - Create
+
+- Create new directory and file: aws/lambdas/cruddur-upload-avatar/function.rb
+
+- Generate a Gemfile in this directory:
+
+```sh
+cd aws/lambdas/cruddur-upload-avatar/
+
+bundle init
+```
+- This will generate a Gemfile in the directory
+- Modify the Gemfile as shown: https://github.com/omenking/aws-bootcamp-cruddur-2023/blob/week-8-again/aws/lambdas/cruddur-upload-avatar/Gemfile
+- Run the following command:
+```sh
+bundle install
+```
+
+- You can set the following env variables in your workspace:
+```sh
+export UPLOADS_BUCKET_NAME="cruddur-uploaded-avatars"
+gp env UPLOADS_BUCKET_NAME="cruddur-uploaded-avatars"
+```
+
+- Run the function.rb exec
+```sh
+bundle exec ruby function.rb
+```
+- This returns a presigned url which we can use to upload data
+
++ You can test this using extensions like postman or alternative like thunder client
+  - Go to New Request
+  - Enter the presigned url
+  - Drop down and choose "PUT"
+  - Click "Send"
++ Upload the image and confirm that it shows on s3. You can delete the image from s3 afterwards.
+
+- We need to package this as a ruby Lambda
+
+- In the CruddurAvatarUpload Lambda created, paste the function.rb code and click Deploy
+- Under the Configuration tab, go to Permissions and click into the Role name
+  - Drop down permissions and add in-line policy
+  - Under Visual editor:
+    - Service: S3
+    - Actions: PutObject
+    - Resources: Check "Specific" and click "Add ARN"
+      - Bucket name: cruddur-uploaded-avatars
+      - Object name: Check "Any"
+      - Add
+    - Review Policy
+      - Name: PresignedUrlAvatarPolicy
+    - Create
+- Expand that policy and copy the json code
+- Create a new file to hold the policy: aws/policies/s3-upload-avatar-presigned-url-policy.json
+- Under the Configuration tab, go to Environment variables and click Edit
+  - Key: UPLOADS_BUCKET_NAME
+  - Value: cruddur-uploaded-avatars
+  - Save
+- Under the "Code" section, go to "Runtime settings" and click Edit
+  - Change "Handler" to function.handler
+- If necessary, rename the function in the "Code" tab to 'function.rb'
+- Deploy 
+- Go to the "Test" tab and click "Test"
+
+
+**Setup jwt-verify Lambda authorizer for HTTP API**
+
+- Create new directory and file: aws/lambdas/lambda-authorizer/index.js
+
+- Installation:
+```sh
+cd aws/lambdas/lambda-authorizer/
+
+npm install aws-jwt-verify --save
+```
+
+- Zip the contents of the lambda-authorizer
+```sh
+zip -r lambda-authorizer /lambda-authorizer
+```
+
+- Go to Lambda > Function > Create function
+  - Function name: CruddurApiGatewayLambdaAuthorizer
+  - Runtime: Node.js 18.x
+  - Architecture: x86_64
+  - Create
+  - In the "Code" tab, click 'Upload from' dropdown and select ".zip"
+  - Upload the lambda-authorizer.zip file
+  - Save
+
+
+**Setup API Gateway**
+
+- Go to API Gateway on AWS > APIs > HTTP API > Build
+  + Create an API
+    - Integrations: lambda
+    - AWS Region: Specify
+    - Lambda function: Select the CruddurAvatarUpload lambda function
+    - API name: api.cruddur.com
+    - Next
+  + Configure routes
+    - Method: POST
+    - Resource path: /avatars/key_upload
+    - Integration target: CruddurAvatarUpload
+    - Next
+  + Define stages
+    - Stage name: $default
+    - Check Auto-deploy
+    - Next
+  + Review and Create
+  + Create
+- In the sidebar, click "Authorization"
+- Go to "Manage authorizers" and click 'Create'
+- Check 'Lambda' and specify the following under 'Authorizer settings'
+  + Name: CruddurJWTAuthorizer
+  + AWS Region: Specify
+  + Lambda function: Select the CruddurApiGatewayLambdaAuthorizer
+  + Response mode: Simple
+  + Uncheck 'Authorizer caching'
+  + Check 'Invoke permissions'
+  + Create
+- Go to "Attach authorizers to routes"
+  + Click 'POST'
+  + Dropdown 'Select existing authorizer' and select the CruddurJWTAuthorizer
+  + Click "Attach authorizer"
+- In the sidebar panel, under 'Deploy', click on "Stages"
+  - Check '$default'
+  - Copy the 'Invoke url'
+
+//- In API Gateway, Under 'Develop' in the sidebar, select "CORS" and click 'Configure'
+//  + Access-Control-Allow-Origin: * (Click 'Add')
+//  + Access-Control-Allow-Methods: Select 'POST' and 'OPTIONS'
+//  + Access-Control-Allow-Headers: *, Authorization
+//  + Access-Control-Expose-Headers: *, Authorization
+//  + Save
+
+- Open the frontend app, go to profile page and try to upload avatar
+- Enter the url along with the resource path in the browser: Invoke url/avatars/key_upload
+- Confirm that the Lambda was triggered in Lambda > Monitor > Logs > View CloudWatch logs
+
+//- Create a custom domain in API Gateway
