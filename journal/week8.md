@@ -732,6 +732,8 @@ zip -r lambda-authorizer /lambda-authorizer
   - Check '$default'
   - Copy the 'Invoke url'
 
+- If you want, you can turn on logging for $default API Gateway
+
 //- In API Gateway, Under 'Develop' in the sidebar, select "CORS" and click 'Configure'
 //  + Access-Control-Allow-Origin: * (Click 'Add')
 //  + Access-Control-Allow-Methods: Select 'POST' and 'OPTIONS'
@@ -743,4 +745,54 @@ zip -r lambda-authorizer /lambda-authorizer
 - Enter the url along with the resource path in the browser: Invoke url/avatars/key_upload
 - Confirm that the Lambda was triggered in Lambda > Monitor > Logs > View CloudWatch logs
 
-//- Create a custom domain in API Gateway
+//- Create a custom domain in API Gateway: api.cruddur.com
+
+- Go to S3 > Buckets > cruddur-uploaded-avatars > Permissions
+- Go to 'Cross-origin resource sharing (CORS)' and click 'Edit'
+- Enter the following json code and save:
+```json
+[
+  {
+    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["PUT"],
+    "AllowedOrigins": [
+      "https://*.gitpod.io"
+    ],
+    "ExposeHeaders": [
+      "x-amz-server-side-encryption",
+      "x-amz-request-id",
+      "x-amz-id-2"
+    ],
+    "MaxAgeSeconds": 3000
+  }
+]
+```
+- Create a new directory/file to hold the CORS code: aws/s3/cors.json
+
+- Modify erb/frontend-react-js.env.erb to reflect the API_GATEWAY_ENDPOINT_URL (ie the invoke url)
+
+- Modify frontend-react-js/src/lib/CheckAuth.js
+
+//
++ At some point, we had to zip the contents of aws/lambdas/cruddur-upload-avatar/, which includes function.rb, Gemfile and Gemfile.lock and save the zip as ruby-lambda.zip.
++ Now, in the Lambda > CruddurAvatarUpload, upload as zip and choose ruby-lambda.zip
+//
+
+**Setup Lambda Layers**
+
+- Create new directory/file: bin/lambda-layers/ruby-jwt
+
+- Give execute permission to the file
+
+- Run the file to create the lambda layer (consider dir path)
+
+- Go to Lambda > Functions > CruddurAvatarUpload
+- Under the 'Code' tab, scroll down to Layers and click 'Add layer'
+  - Layer source: Custom layers
+  - Custom layers: jwt
+  - Choose version
+  - Add
+- Deploy
+
+- Open the frontend app, go to profile page, Edit profile and try to upload avatar. Then check the logs from the lambda function
+- Now go to S3 > Buckets > cruddur-uploaded-avatars and confirm the presence of the image. Also confirm it is being served in assets.cruddur.com/avatars
