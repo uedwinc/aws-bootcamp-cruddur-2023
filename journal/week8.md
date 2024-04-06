@@ -795,4 +795,11 @@ zip -r lambda-authorizer /lambda-authorizer
 - Deploy
 
 - Open the frontend app, go to profile page, Edit profile and try to upload avatar. Then check the logs from the lambda function
-- Now go to S3 > Buckets > cruddur-uploaded-avatars and confirm the presence of the image. Also confirm it is being served in assets.cruddur.com/avatars
+- Now go to S3 > Buckets > cruddur-uploaded-avatars and confirm the presence of the image named after the cognito user uuid. Also confirm it is being served in assets.cruddur.com/avatars
+
+
+**Render Avatar**
+
+- Create the following files: frontend-react-js/src/components/ProfileAvatar.js and frontend-react-js/src/components/ProfileAvatar.css
+
+- Modify frontend-react-js/src/components/ProfileInfo.js
