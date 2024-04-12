@@ -34,7 +34,7 @@ The `/journal` directory contains
 - [ ] [Week 7](journal/week7.md)
 - [ ] [Serverless Image Processing](journal/week8.md)
 - [ ] [CI/CD with CodePipeline, CodeBuild and CodeDeploy](journal/week9.md)
-- [ ] [Week 10](journal/week10.md)
+- [ ] [CloudFormation](journal/week10.md)
 - [ ] [Week 11](journal/week11.md)
 - [ ] [Week 12](journal/week12.md)
 - [ ] [Week 13](journal/week13.md)
