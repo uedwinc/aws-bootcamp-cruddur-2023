@@ -54,6 +54,122 @@ gp env CFN_BUCKET="cfn-artifacts"
 
 - Create a file to run the template: bin/cfn/networking
 
+- Give execute permission to the file
+
 - Now, run the /bin file to create the resource: `./bin/cfn/networking`
 
 - Execute the change set on the console
+
+**CFN for Cluster**
+
+- Create dir/file: aws/cfn/cluster/template.yaml
+
+- Modify bin/cfn/cluster
+
+- Give execute permission to the file
+
++ Use cfn-toml
+
+- `gem install cfn-toml` (add this to gitpod.yml)
+
+- Create the following: aws/cfn/cluster/config.toml.examle, aws/cfn/cluster/config.toml, aws/cfn/networking/config.toml.example, aws/cfn/networking/config.toml
+
+**CFN for Service Layer**
+
+- Create the following: aws/cfn/service/config.toml.examle, aws/cfn/service/config.toml, aws/cfn/service/template.yaml
+
+- Create the service deployment file: bin/cfn/service
+- Give execute permission to the file
+- Run the file
+
+- This didn't work because we need database security group to setup the service so we will continue this section after database setup
+
+- While trying to debug service create, make a new file: bin/backend/create-service
+
+**CFN for RDS**
+
+- Create the dir/file: aws/cfn/db/template.yaml and aws/cfn/db/config.toml
+
+- Create the file: bin/cfn/db
+
+- Set DB_PASSWORD for MasterUserPassword. It is required in bin/cfn/db
+
+```sh
+export DB_PASSWORD=dbPassword123
+gp env DB_PASSWORD=dbPassword123
+```
+
+- Give execute permission to the file: bin/cfn/db
+
+- Run the database deployment
+
+- Copy the connection endpoint of the database. Go to Parameter store on Systems manager and edit the CONNECTION_URL to reflect that. You only need to edit what is after @ and before port number.
+
+**CFN for Service Layer Again**
+
+- After pointing the load balancer to the appropriate port, run the service deployment script
+
+- Go to Route53 > Hosted zones > Records > api.cruddur.com and edit route to point to the new load balancer dns. Do the same for cruddur.com record
+
+- On the browser: api.cruddur.com/api/health-check
+
+**SAM CFN for DynamoDB, DynamoDB Streams and Lambda**
+
+- We will be using AWS SAM for the infrastructure implementation here
+
+- Create dir/files: ddb/template.yaml, ddb/config.toml
+
+- In the template.yaml, the Dynamodb table resource attributedefinitions and keyschema sections as well as other specifications was filled from our previously created bin/ddb/schema-load
+- Most of the configurations are gotten from the previously created lambda stream on the console
+
+- Add task to install AWS SAM in .gitpod.yml
+https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html
+
+- Do `sam --version` to confirm
+
+- Create a new directory: ddb/cruddur-messaging-stream
+
+- Move and rename aws\lambdas\cruddur-messaging-stream.py to ddb/cruddur-messaging-stream/lambda_function.py
+
+- Create SAM files for build, package and deploy: ddb/build, ddb/package, ddb/deploy
+
+- Give execute permission to all files
+
+- Modify .gitignore to ignore the output of SAM build function including the .aws.sam/ directory
+
+- Now, run the files
+
+- Deploy will create a changeset and require console authorization
+
+**CFN for CICD**
+
+- Create the dir/files: aws/cfn/cicd/template.yaml, aws/cfn/cicd/config.toml
+- Create the artifact bucket manually
+
+- Create a codebuild nested stack dir/file: aws/cfn/cicd/nested/codebuild.yaml
+
+- Create the deployment file: bin/cfn/cicd
+- Give execute permission to the file
+
+- Create a new top level dir called tmp to hold the output of cloudformation package
+
+- Run the deploy script: bin/cfn/cicd
+
+- Confirm changeset on cloudformation
+
+- If successful, go to codepipeline. The first run usually fails because you need to update github connection. 
+- Go to codepipeline > settings > connections. Check the correct connection and click 'update pending connection'
+- Either install app on the correct github account or just connect if you already installed previously
+
+**CFN Static Website Hosting Frontend**
+
+- Serving frontend via CloudFront
+
+- Create the following dir/files: aws/cfn/frontend/template.yaml, aws/cfn/frontend/config.toml
+
+- Create the provisioning file: bin/cfn/frontend
+- Give execute permission to the file
+- Run the file
+
+//- You may need to remove the cruddur.com type A record from route53 to prevent conflict error//
+
