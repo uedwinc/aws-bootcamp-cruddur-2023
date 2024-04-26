@@ -4,6 +4,8 @@
 
 # Name not certain yet
 
+# Setup and Sync Static Website
+
 - Create a new file: bin/frontend/static-build
 - Give execution rights
 - Run the file
@@ -76,6 +78,42 @@ gem install dotenv
   ]
 }
 ```
+- Give the policy a name: S3Accessfor Sync
 
 - **Homework challenge**
 - Create the GitHub Actions worksflow: github/workflows/sync.yaml (You would need to rename these accordingly when setting up the workflow. And also rework the yaml file)
+
+
+# Reconnect Database
+
+- Go to api.cruddur.com/api/health-check (This should show success) but api.cruddur.com/api/activities/home (This should show internal server error. If it shows debug mode error, then you need to fix that)
+
+- May not be applicable, but if debug mode is shown, you may need to change sth in app.py, then push a new prod image and run the service stack to apply
+
+- Compose up to startup locally
+
+- Internal server error is because we don't have the database seeded with information
+
++ Update env variable PROD_CONNECTION_URL to reflect the new database name
+
+- Upon up port 5432 for gitpod in the database security group (make sure the description is GITPOD). Use ./bin/rds/update-sg-rule to update security group rule for our specific gitpod IP. There are a number of envs you will need to change in the script.
+
+- You can now connect to the prod database: `./bin/db/connect prod`
+- Exit
+
+- Schema load for prod: `./bin/db/schema-load prod`
+
+- You can run migrate locally for production using `CONNECTION_URL=PROD_CONNECTION_URL ./bin/db/migrate`
+- You can connect again and use postgres commands from before to see tables
+
+- You may need to change the CONNECTION_URL set in env variables of post confirmation lambda to reflect the new cfn cluster
+- On the console, under the post confirmation lambda, manually point the vpc to the new cfn created vpc. Create a new security group (in a new tab) (name: CognitoLambdaSG) (description: For the Lambda that needs to connect to postgres) with no inbound rules and attach it to the vpc. Select the public subnets. 
+- Go to the database security group and allow postgres port access from that newly created security group (description: COGNITOPOSTCONF)
+
+- In cognito, delete all previous users
+
+- Now, try to signup on cruddur.com
+- Then sign-in
+- Make a Crud
+
+- Try to signup as another user or even multiples
