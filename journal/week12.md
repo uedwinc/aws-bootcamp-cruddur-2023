@@ -117,3 +117,11 @@ gem install dotenv
 - Make a Crud
 
 - Try to signup as another user or even multiples
+
+**Refactor app.py into separate modules**
+
+- Create the following files: backend-flask/lib/rollbar.py, backend-flask/lib/xray.py, backend-flask/lib/honeycomb.py, backend-flask/lib/cors.py, backend-flask/lib/cloudwatch.py, backend-flask/lib/helpers.py
+
+- Create a new folder: backend-flask/routes
+- Create the following files: backend-flask/routes/activities.py, backend-flask/routes/users.py, backend-flask/routes/messages.py, backend-flask/routes/general.py
+- Refactor backend-flask/app.py
