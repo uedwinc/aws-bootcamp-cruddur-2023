@@ -125,3 +125,25 @@ gem install dotenv
 - Create a new folder: backend-flask/routes
 - Create the following files: backend-flask/routes/activities.py, backend-flask/routes/users.py, backend-flask/routes/messages.py, backend-flask/routes/general.py
 - Refactor backend-flask/app.py
+
+- Create file: backend-flask/db/sql/activities/reply.sql
+
+- Run `migration`
+
+```sh
+./bin/generate/migration reply_to_activity_uuid_to_string
+```
+- Thi should generate out a migration file as backend-flask/db/migrations/16844665640237772_reply_to_activity_uuid_to_string.py (may not be exact)
+
+- Modify the file to https://github.com/omenking/aws-bootcamp-cruddur-2023/blob/week-x/backend-flask/db/migrations/16844665640237772_reply_to_activity_uuid_to_string.py
+
+- Run the migration
+```sh
+./bin/db/migrate
+```
+
+- Create file: backend-flask/db/sql/activities/show.sql
+
+- Create the following files: frontend-react-js/src/components/FormErrors.js, frontend-react-js/src/components/FormErrors.css, frontend-react-js/src/components/FormErrorItem.js
+
+- Create files: frontend-react-js/src/lib/Requests.js
