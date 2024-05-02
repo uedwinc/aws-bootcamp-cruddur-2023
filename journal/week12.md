@@ -147,3 +147,8 @@ gem install dotenv
 - Create the following files: frontend-react-js/src/components/FormErrors.js, frontend-react-js/src/components/FormErrors.css, frontend-react-js/src/components/FormErrorItem.js
 
 - Create files: frontend-react-js/src/lib/Requests.js
+
+- Create files: frontend-react-js/src/pages/ActivityShowPage.js, frontend-react-js/src/pages/ActivityShowPage.css
+- Create files: frontend-react-js/src/components/Replies.js, frontend-react-js/src/components/Replies.css
+
+- Create file: frontend-react-js/src/components/ActivityShowItem.js
