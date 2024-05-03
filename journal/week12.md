@@ -152,3 +152,47 @@ gem install dotenv
 - Create files: frontend-react-js/src/components/Replies.js, frontend-react-js/src/components/Replies.css
 
 - Create file: frontend-react-js/src/components/ActivityShowItem.js
+
+- Run migration against production:
+```sh
+CONNECTION_URL=$PROD_CONNECTION_URL ./bin/db/migrate
+```
+
+- Rollout the backend using the CICD pipeline. Create pull request to merge changes to prod branch and trigger pipeline build for the backend.
+- Confirm CodePipeline is successfull
+
+- For the frontend:
+
+- Run the static build
+```sh
+./bin/frontend/static-build
+```
+- Run the sync
+```sh
+./bin/frontend/sync
+```
+
+- Go to CloudFront > Distributions, under Invalidations tab, check that a new one is in progress
+
+///
+N.B - target group for frontend if exists is not going to be used
+///
+
+///
+- We may need to update the ddb table name in a couple places. Not sure but eg ddb.py, erb file, cfn for service. Again, this may just be what he did in order to be able to run production in local environment
+///
+
+> Create a machine-user with permissions to read and write from dynamodb
+
+- Create the following cfn files: aws/cfn/machine-user/template.yaml, aws/cfn/machine-user/config.toml
+
+- Create the execution script: bin/cfn/machineuser
+- Give execute permission
+- Run the script
+- Execute changeset on cloudformation
+
+- Go to IAM > Users > cruddur-machine-user and generate credentials
+- Give the user cli access
+
+- Go to AWS Systems Manager
+- Edit and update the previously created access and secret key ID for cruddur/backend-flask/... credentials (You can create a different machine user for the codebuild if you want)
