@@ -284,7 +284,7 @@ import { Auth } from 'aws-amplify';
 ```sh
 aws cognito-idp admin-set-user-password --username andrewbrown --password Testing1234! --user-pool-id us-east-2_xMATXNbsI --permanent
 ```
-- Try to inspect the crudder homepage after signin to see ![inspect1]() ![inspect2]()
+- Try to inspect the crudder homepage after signin to see ![inspect1](/1-images/inspect1.png) ![inspect2](/1-images/inspect2.png)
 
 - Go to cognito console and manually enter required attributes (name and prefered username). Then refresh cruddur to confirm.
 
