@@ -180,7 +180,7 @@ aws dynamodb list-tables --endpoint-url http://localhost:8000
 
 ```sh
 aws dynamodb scan --table-name Music --query "Items" --endpoint-url http://localhost:8000
-````
+```
 
 #### References
 
